@@ -49,7 +49,7 @@ jobs:
     # floor, a mutable image tag, an edge with no review console. Those are the assertions that
     # would otherwise be true only in the commit message.
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
