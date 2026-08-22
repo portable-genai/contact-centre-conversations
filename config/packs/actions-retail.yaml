@@ -1,0 +1,49 @@
+# Action catalog: what a machine may be ASKED to do, and which of those a machine may never do.
+#
+# `consequential` is the maker-checker line and it is REQUIRED on every entry: an action whose
+# catalog forgot to say is treated as consequential, and a silent default is how that gets
+# forgotten. A consequential action never auto-executes, whatever the gate decided.
+kind: actions
+catalog_id: retail-actions-v1
+
+actions:
+  - action_id: read_card_balance
+    title: Read the current card balance
+    consequential: false
+    severity: low
+    parameters:
+      - name: card_last4
+        kind: string
+        required: true
+        pattern: "[0-9]{4}"
+  - action_id: read_recent_transactions
+    title: List the last five transactions
+    consequential: false
+    severity: low
+    parameters:
+      - name: card_last4
+        kind: string
+        required: true
+        pattern: "[0-9]{4}"
+  - action_id: block_card
+    title: Block the card
+    consequential: true
+    severity: high
+    parameters:
+      - name: card_last4
+        kind: string
+        required: true
+        pattern: "[0-9]{4}"
+  - action_id: raise_chargeback
+    title: Raise a chargeback against a transaction
+    consequential: true
+    severity: critical
+    parameters:
+      - name: card_last4
+        kind: string
+        required: true
+        pattern: "[0-9]{4}"
+      - name: transaction_ref
+        kind: string
+        required: true
+        pattern: "TXN-[0-9]{6}"

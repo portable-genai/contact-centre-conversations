@@ -1,0 +1,9 @@
+# Offline knowledge-base corpus (FICTIONAL). One JSON object per line. Fields: passage_id, title,
+# text, market, locale. The local retrieval adapter ranks by normalised term overlap and every
+# passage carries the citation a drafted reply is traced through. No real institution appears
+# here, and no figure in a suggested reply can exist unless it is in one of these lines.
+{"passage_id": "kb-sg-001", "title": "Card balance enquiries", "text": "An agent may state the current card balance after the caller has been verified. The balance quoted is the posted balance and excludes transactions still in authorisation.", "market": "SG", "locale": "en-SG"}
+{"passage_id": "kb-sg-002", "title": "Recent transaction listing", "text": "The last five posted transactions may be read out after verification. Pending authorisations are not read out because the merchant may still amend them.", "market": "SG", "locale": "en-SG"}
+{"passage_id": "kb-sg-003", "title": "Lost or stolen cards", "text": "A lost card is blocked immediately on the caller request and a replacement is despatched. The replacement arrives within 5 working days and the card number changes.", "market": "SG", "locale": "en-SG"}
+{"passage_id": "kb-sg-004", "title": "Disputed transactions", "text": "A disputed transaction is investigated and provisional credit may be applied while the investigation runs. The investigation takes up to 45 days and the caller keeps the right to dispute in writing.", "market": "SG", "locale": "en-SG"}
+{"passage_id": "kb-sg-005", "title": "Call recording and data use", "text": "Calls are recorded for quality and training. The caller is told at the start of the call and the information collected is used to service the account.", "market": "SG", "locale": "en-SG"}

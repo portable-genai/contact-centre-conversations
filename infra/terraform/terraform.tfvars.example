@@ -1,0 +1,129 @@
+# terraform.tfvars.example: copy to terraform.tfvars and edit.
+#
+# Two postures are shown. The first is a project-scoped evaluation stack that a caller without
+# org-level roles can apply and later destroy; it is NOT compliant for production and says so.
+# The second is the sovereign posture this repo is written for. Everything not listed here
+# keeps the default in variables.tf, and the defaults are the strict ones.
+#
+# The state backend is partial (providers.tf). Initialise it with the reviewed bucket:
+#   terraform init -backend-config="bucket=YOUR_STATE_BUCKET" \
+#                  -backend-config="prefix=contact/ENVIRONMENT"
+# Offline validation of this configuration needs no bucket and no credentials:
+#   terraform init -backend=false && terraform validate && terraform fmt -check -recursive
+
+project_id = "fictional-contact-sg" # obviously fictional; replace
+
+# ----------------------------------------------------------------------------- #
+# Residency. asia-southeast1 is the single approved region: it is the default for
+# both variables, it is what the org policy allowlist pins, it is where the
+# recogniser runs, and it is what the application validates its own configured
+# region against at settings load. Changing it means re-confirming that Vertex
+# AI, Speech-to-Text, Text-to-Speech, Dialogflow CX, Firestore, Cloud KMS, Cloud
+# Logging and Cloud Run all serve the new region AND that the residency
+# obligation for recorded conversations allows it.
+# ----------------------------------------------------------------------------- #
+region          = "asia-southeast1"
+allowed_regions = ["asia-southeast1"]
+
+# ----------------------------------------------------------------------------- #
+# POSTURE A: quick evaluation (project-scoped, no org roles, fully destroyable).
+# NOT a compliant production deployment. Uncomment the three lines together.
+# ----------------------------------------------------------------------------- #
+# enable_org_policies = false
+# enable_vpc_sc       = false
+# worm_locked         = false
+
+# ----------------------------------------------------------------------------- #
+# POSTURE B: sovereign (the defaults). Org policies on, WORM bucket locked, and a
+# VPC-SC perimeter that starts in DRY RUN. Supply the access policy id, apply,
+# read the vpc_sc_denials alert for a full business cycle, add the operators, and
+# only then set vpc_sc_enforce = true.
+# ----------------------------------------------------------------------------- #
+access_policy_id = "123456789012"
+vpc_sc_enforce   = false
+operator_members = [
+  # "user:contact-centre-lead@example.com",
+  # "serviceAccount:ci@fictional-contact-sg.iam.gserviceaccount.com",
+]
+
+# Retention is deliberate because the lock is irreversible. 180 days is the floor.
+retention_days = 180
+worm_locked    = true
+
+alert_notification_channels = [
+  # "projects/fictional-contact-sg/notificationChannels/1234567890123456789",
+]
+
+# The contact store. Set this to false only after confirming the project already
+# has a (default) Firestore database in the region above; the location is fixed at
+# creation and cannot be changed afterwards.
+create_firestore_database = true
+
+# ----------------------------------------------------------------------------- #
+# The two separately gated modes. BOTH BORN OFF, and each carries its own Hrz4
+# promotion bundle: they are two releases with different risk postures, so a
+# strong result in one can never carry the other over the line. With both off the
+# platform still deploys and every mode route answers 503, which is the right
+# first apply.
+# ----------------------------------------------------------------------------- #
+enable_agent_assist = false
+enable_self_service = false
+
+# agent_assist_promotion_bundle = "contact-centre-conversations-agent-assist"
+# self_service_promotion_bundle = "contact-centre-conversations-self-service"
+
+# ----------------------------------------------------------------------------- #
+# The serving edge. Disabled by default, so the residency, encryption and audit
+# stack can be applied and reviewed before anything serves traffic.
+# ----------------------------------------------------------------------------- #
+production_edge_enabled = false
+
+# api_image must be pinned by digest: a tag can be re-pushed, so a tag pin lets what
+# serves change with no diff.
+# api_image      = "asia-southeast1-docker.pkg.dev/fictional-contact-sg/contact/api@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+# service_domain = "contact-centre.fictional-bank.example"
+# dns_managed_zone = "fictional-bank-example"
+
+# The sibling services this service cannot serve a turn without. All three are
+# required once the edge is enabled: rule R8 (the console an escalation is routed
+# to), rule R1 (the gateway every inbound turn is screened through) and rule R3
+# (the governed knowledge base a suggestion must be grounded in).
+# human_review_url = "https://review.fictional-bank.example"
+# guardrail_url    = "https://guardrail.fictional-bank.example"
+# retrieval_url    = "https://knowledge.fictional-bank.example"
+
+# The client's action catalog, required only when the self-service mode is served:
+# that is the mode that takes actions, and the catalog is where the consequential
+# flag lives.
+# tool_catalog_url = "https://actions.fictional-bank.example"
+
+# Rule R5 and rule R2: the Hrz4 promotion authority and the Hrz5 collector. Leave a
+# variable out entirely rather than setting it to an empty string; empty is read as a
+# deliberate "no authority named" and refuses.
+# quality_service_url = "https://quality.fictional-bank.example"
+# otlp_endpoint       = "https://otel-collector.fictional-bank.example:4318"
+
+# Identity. IAP is the only way a caller can be authenticated here, for the human
+# agent and for the channel platform in front of a self-service customer alike.
+# edge_iap_enabled = true
+# iap_members      = [
+#   "group:contact-centre-agents@example.com",
+#   "serviceAccount:channel@fictional-bank-cc.iam.gserviceaccount.com",
+# ]
+
+# Set this to the `iap_audience` OUTPUT of the first apply, then apply again. Until it
+# is set, the service starts, stays health-checkable and refuses every end-user request
+# with a 503 naming CONTACT_IAP_AUDIENCE.
+# iap_audience = "/projects/123456789012/global/backendServices/1234567890123456789"
+
+# Credentials arrive as pinned Secret Manager versions, never as values here. The
+# inbound token is what a calling service presents to this one; the HRZ_* pair
+# authenticates the outbound calls to Hrz1, Hrz2 and the action catalog, and the
+# HRZ7_* pair the outbound calls to the review console.
+# additional_secret_env = {
+#   CONTACT_S2S_TOKEN    = { secret_id = "contact-inbound-s2s", version = "3" }
+#   HRZ_S2S_TOKEN        = { secret_id = "hrz-outbound-s2s", version = "2" }
+#   HRZ_S2S_SIGNING_KEY  = { secret_id = "hrz-actor-signing", version = "1" }
+#   HRZ7_S2S_TOKEN       = { secret_id = "hrz7-outbound-s2s", version = "2" }
+#   HRZ7_S2S_SIGNING_KEY = { secret_id = "hrz7-actor-signing", version = "1" }
+# }

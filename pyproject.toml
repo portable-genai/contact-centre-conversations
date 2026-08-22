@@ -1,0 +1,119 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "contact-centre-conversations"
+version = "0.0.1"
+description = "Contact-centre conversational AI with two separately gated modes."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Ashish Awasthi" }]
+
+# The catalog commons, pinned by tag (no build-time coupling: a deliberate per-repo bump). Each
+# package carries its own release line, so each has its own cookiecutter variable. The managed
+# cloud SDKs live in the [gcp] extra so the local/onprem gate installs none of them.
+#
+# `review-kit` is not optional: rule R8 says a producer that sets `requires_human_review`
+# MUST route the item to the Hrz7 Human-Review console rather than terminate the escalation in a
+# per-repo boolean, and the ReviewRouterPort adapters are bound in EVERY profile.
+#
+# `speech-lexicon-kit` owns the transcript, speaker-turn, word-offset, channel-role and
+# redaction-span types and the phrase matcher. This repo RE-EXPORTS its ports and never
+# reimplements any of them: a citation of "turn 7, characters 12 to 34" has to mean the same
+# thing here, in E3's scorecard and in every other repo that reads a contact-centre transcript.
+dependencies = [
+  "pii-kit @ git+https://github.com/portable-genai/pii-kit@v0.0.1",
+  "hex-service-kit[fastapi] @ git+https://github.com/portable-genai/hex-service-kit@v0.0.1",
+  "agent-eval-kit @ git+https://github.com/portable-genai/agent-eval-kit@v0.0.1",
+  "review-kit @ git+https://github.com/portable-genai/review-kit@v0.0.1",
+  "speech-lexicon-kit @ git+https://github.com/portable-genai/speech-lexicon-kit@v0.0.1",
+  "pyyaml>=6.0",
+  "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+# The SDK-free dev/test/CI toolchain. Ruff is pinned EXACTLY so formatting never drifts.
+dev = [
+  "ruff==0.15.18",
+  "mypy>=1.10",
+  "pytest>=8.2",
+  "types-PyYAML>=6.0",
+]
+# Managed cloud SDKs (lazy-imported by the gcp adapters). NOT installed by the local gate.
+gcp = [
+  # The OpenTelemetry tracer implementation, from the commons. Only a deployed
+  # profile exports spans: the tracer PORT and the log formatter are in the commons
+  # CORE, so the offline gate binds and logs with none of this installed.
+  "hex-service-kit[otel] @ git+https://github.com/portable-genai/hex-service-kit@v0.0.1",
+  "google-cloud-logging>=3.0",
+  "google-auth>=2.0",
+]
+
+[project.scripts]
+contact_centre_conversations = "contact_centre_conversations.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/portable-genai/contact-centre-conversations"
+Source = "https://github.com/portable-genai/contact-centre-conversations"
+
+# The commons are pinned by git+https (direct references); allow them for this project.
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/contact_centre_conversations"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+# The test-support package sorts into its own section, AFTER the first-party package. Without
+# this, `import contact_centre_conversations` and `import tests` share a section and their
+# order depends on how the package name happens to sort against the word "tests": a repo
+# rendered with a later-sorting name would need a different (and only different) import order.
+known-local-folder = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+
+# The managed SDKs are LAZY imports inside methods and are not installed by the SDK-free dev
+# toolchain, so mypy's verdict about them used to depend on what happened to be in the venv:
+# absent it reported `import-not-found`, present-but-unstubbed it reported `import-untyped`, and
+# a `# type: ignore[import-not-found]` written for the first became an `unused-ignore` ERROR
+# under the second. `mypy src` was therefore red for any developer who had google-auth installed
+# for some other reason, and it went red the moment this repo's own IAP negative matrix needed
+# the verifier present. One declaration here, matching the rest of the catalog, so the type
+# check says the same thing either way.
+[[tool.mypy.overrides]]
+module = ["google.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+# The demo scripts are importable from the suite, so `tests/unit/test_demo_surface.py` can drive
+# the real demo instead of asserting that some files exist. Declared here rather than with a
+# `sys.path` insert in a conftest: a path hack is invisible to the reader of the failing test.
+#
+# `eval` is on the same path for the same reason: `tests/unit/test_eval_falsification.py` drives
+# the REAL scorers from `eval/run_eval.py` rather than a copy of them, because a falsification
+# test that proved a COPY of a metric could go red would prove nothing about the metric that
+# gates a promotion.
+#
+# `scripts` is deliberately NOT added to `[tool.ruff] src`. If it were, a sibling import such as
+# `import demo` would share an isort section with `import <package>`, and the correct import
+# order would depend on how the rendered package name sorts against the word "demo". Same trap
+# as `known-local-folder` below solves for `tests`.
+pythonpath = ["scripts", "eval"]
+markers = [
+  "integration: tests that need live cloud services (deselected by default)",
+]

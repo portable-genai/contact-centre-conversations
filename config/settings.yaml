@@ -1,0 +1,154 @@
+# Contact Centre AI (E1) runtime configuration.
+#
+# Loaded by `src/contact_centre_conversations/config.py`. Point at a different file with
+# CONTACT_SETTINGS; a path that is named but missing is a boot error, not
+# a silent fall-back to built-in defaults.
+#
+# `${VAR}` and `${VAR:-default}` resolve in THREE states: unset takes the default written here,
+# SET-AND-EMPTY resolves to empty (an operator who emptied a value expressed an intent, and it
+# names nothing), and a set value wins. This file holds env var NAMES and non-secret defaults
+# only: no secret value is ever committed here.
+
+# Data residency. Selected once and shared by the runtime and Terraform.
+region: ${GCP_REGION:-asia-southeast1}
+
+# Tenant partition asserted on outbound reviews when the verified principal carries none.
+# (Built as one template expression: a literal "${" immediately before a template opener is
+# ambiguous to render, so the whole reference is produced by the expression instead.)
+tenant: ${CONTACT_TENANT:-}
+
+# Local profile stores. ":memory:" is the ephemeral, deterministic default the gate uses; a
+# deployment points this at a durable path.
+audit_path: ${CONTACT_AUDIT_PATH:-:memory:}
+
+# The external head anchor for the WORM audit chain (practices check C9). The hash chain cannot
+# detect a TRUNCATED TAIL by itself: dropping the newest rows leaves a shorter chain that
+# verifies perfectly. Point this at a file on a DIFFERENT volume, under different credentials,
+# from audit_path, and every append also writes the chain head there. Empty (the default) means
+# no anchor, which is correct for the ephemeral ":memory:" store and wrong for a durable one.
+audit_anchor_path: ${CONTACT_AUDIT_ANCHOR:-}
+
+# The audience the managed (gcp) IAP identity adapter verifies the assertion AGAINST: the
+# IAP-protected resource, "/projects/<NUM>/global/backendServices/<ID>" behind an HTTPS load
+# balancer. It is per-deployment, so it is configuration and never a literal in the adapter.
+# Three states, and UNSET and SET-AND-EMPTY land in the same place on purpose: both resolve to
+# empty, and an empty audience REFUSES every caller rather than verifying without one.
+# google-auth documents audience=None as "the audience is not verified", which accepts ANY
+# Google-signed OIDC token, from any project or any app, and reads its email as a principal.
+iap_audience: ${CONTACT_IAP_AUDIENCE:-}
+
+# Rule R8: where an escalated result is routed for human review. The managed profile REFUSES to
+# swallow an escalation when this is empty, so a producer cannot ship with R8 unwired.
+# The outbound S2S credentials are HRZ7_S2S_TOKEN / HRZ7_S2S_SIGNING_KEY (see .env.secrets.example),
+# deliberately distinct from this service's own inbound CONTACT_S2S_TOKEN.
+review_url: ${HRZ_HUMAN_REVIEW_URL:-}
+
+# The two separately gated modes. BOTH DEFAULT OFF: a deployment that configured nothing serves
+# neither, and `domain/modes.py` resolves each flag in THREE states. The `:-off` below is the
+# UNSET default, so an unset variable is off; a variable an operator deliberately EMPTIED
+# resolves to empty and REFUSES TO BOOT rather than inheriting that default, and so does an
+# unrecognised or mis-capitalised value.
+#
+# Each mode is its own Hrz4 gated release with its own rubric set and risk posture (internal
+# decision-support vs customer-facing), so each names the promotion bundle whose evidence
+# authorised it. A mode enabled with no bundle refuses to boot under any profile other than a
+# deliberate offline `local`, where there is no customer and nothing to promote to.
+modes:
+  agent_assist:
+    enabled: ${CONTACT_AGENT_ASSIST:-off}
+    promotion_bundle: ${CONTACT_AGENT_ASSIST_BUNDLE:-}
+  self_service:
+    enabled: ${CONTACT_SELF_SERVICE:-off}
+    promotion_bundle: ${CONTACT_SELF_SERVICE_BUNDLE:-}
+
+# The reviewed policy packs: procedures, disclosures, allowlists and the action catalog. They are
+# DATA and they are validated at boot; a pack that fails validation stops the process. A missing
+# directory yields the EMPTY library, which refuses everything rather than allowing everything.
+packs_path: ${CONTACT_PACKS_PATH:-config/packs}
+
+# The offline knowledge-base corpus and the scripted contact streams. Both are fixtures for the
+# `local` family; the managed family reaches Hrz2 and the real recogniser instead.
+kb_path: ${CONTACT_KB_PATH:-config/kb/passages.jsonl}
+streams_path: ${CONTACT_STREAMS_PATH:-config/streams}
+
+# Sibling services the platform-remote adapters call. Empty means unconfigured, and an
+# unconfigured remote dependency REFUSES at the adapter rather than defaulting to localhost.
+retrieval_url: ${HRZ_KNOWLEDGE_BASE_URL:-}
+guardrail_url: ${HRZ_GUARDRAIL_URL:-}
+tool_catalog_url: ${CONTACT_TOOL_CATALOG_URL:-}
+
+# The managed model the generation adapter asks for. Configuration, never a literal in a module.
+model: ${CONTACT_MODEL:-gemini-3.5-flash}
+
+# The per-port adapter map: the ONLY place a binding lives, so switching the whole stack is a
+# configuration change rather than a code edit. Every port must bind every profile; the loader
+# refuses a partial block and `tests/test_settings_file.py` fails the build if this drifts from
+# `config.DEFAULT_BINDINGS`.
+project_id: ${GOOGLE_CLOUD_PROJECT:-}
+
+adapters:
+  audit:
+    local: contact_centre_conversations.adapters.local.audit:LocalAuditAdapter
+    gcp: contact_centre_conversations.adapters.gcp.audit:CloudAuditAdapter
+    onprem: contact_centre_conversations.adapters.onprem.audit:OnPremAuditAdapter
+  identity:
+    local: contact_centre_conversations.adapters.local.identity:LocalIdentityAdapter
+    gcp: contact_centre_conversations.adapters.gcp.identity:IapIdentityAdapter
+    onprem: contact_centre_conversations.adapters.onprem.identity:OnPremIdentityAdapter
+  review_router:
+    local: contact_centre_conversations.adapters.local.review_router:LocalReviewRouter
+    gcp: contact_centre_conversations.adapters.gcp.review_router:CloudReviewRouter
+    onprem: contact_centre_conversations.adapters.onprem.review_router:OnPremReviewRouter
+
+  # Tracing. Which BACKEND a deployed profile exports to is not a binding: the gcp
+  # adapter reads OTEL_EXPORTER_OTLP_ENDPOINT and sends OTLP to the Hrz5 collector when
+  # it is set, straight to Cloud Trace when it is not. Tracing is not essential to
+  # correctness, so onprem is ABSENT rather than fatal, unlike the other placeholders.
+  tracer:
+    local: contact_centre_conversations.adapters.local.tracer:LocalNoopTracerAdapter
+    gcp: contact_centre_conversations.adapters.gcp.tracer:CloudTracerAdapter
+    onprem: contact_centre_conversations.adapters.onprem.tracer:OnPremTracerAdapter
+
+  # The promotion authority (Hrz4). The local adapter scores offline but REFUSES to
+  # promote: a promotion certified by a laptop with no quality service is certified by
+  # nothing.
+  evaluation:
+    local: contact_centre_conversations.adapters.local.evaluation:LocalOfflineEvalAdapter
+    gcp: contact_centre_conversations.adapters.gcp.evaluation:ManagedEvalGateAdapter
+    onprem: contact_centre_conversations.adapters.onprem.evaluation:OnPremEvalAdapter
+  retrieval:
+    local: contact_centre_conversations.adapters.local.retrieval:LocalFixtureRetrievalAdapter
+    gcp: contact_centre_conversations.adapters.gcp.retrieval:PlatformRetrievalAdapter
+    onprem: contact_centre_conversations.adapters.onprem.retrieval:OnPremRetrievalAdapter
+  generation:
+    local: contact_centre_conversations.adapters.local.generation:LocalTemplateGenerationAdapter
+    gcp: contact_centre_conversations.adapters.gcp.generation:VertexGenerationAdapter
+    onprem: contact_centre_conversations.adapters.onprem.generation:OnPremGenerationAdapter
+  guardrail:
+    local: contact_centre_conversations.adapters.local.guardrail:LocalCueGuardrailAdapter
+    gcp: contact_centre_conversations.adapters.gcp.guardrail:PlatformGuardrailAdapter
+    onprem: contact_centre_conversations.adapters.onprem.guardrail:OnPremGuardrailAdapter
+  tool_catalog:
+    local: contact_centre_conversations.adapters.local.tool_catalog:LocalFixtureToolCatalog
+    gcp: contact_centre_conversations.adapters.gcp.tool_catalog:McpToolCatalog
+    onprem: contact_centre_conversations.adapters.onprem.tool_catalog:OnPremToolCatalog
+  contact_store:
+    local: contact_centre_conversations.adapters.local.contact_store:LocalContactStore
+    gcp: contact_centre_conversations.adapters.gcp.contact_store:FirestoreContactStore
+    onprem: contact_centre_conversations.adapters.onprem.contact_store:OnPremContactStore
+  speech_to_text:
+    local: contact_centre_conversations.adapters.local.speech:LocalReplaySpeechAdapter
+    gcp: contact_centre_conversations.adapters.gcp.speech:CloudSpeechAdapter
+    onprem: contact_centre_conversations.adapters.onprem.speech:OnPremSpeechAdapter
+  text_to_speech:
+    local: contact_centre_conversations.adapters.local.speech:LocalReplaySpeechAdapter
+    gcp: contact_centre_conversations.adapters.gcp.speech:CloudSpeechAdapter
+    onprem: contact_centre_conversations.adapters.onprem.speech:OnPremSpeechAdapter
+  diarization:
+    local: contact_centre_conversations.adapters.local.speech:LocalReplaySpeechAdapter
+    gcp: contact_centre_conversations.adapters.gcp.speech:CloudSpeechAdapter
+    onprem: contact_centre_conversations.adapters.onprem.speech:OnPremSpeechAdapter
+  conversation_channel:
+    local: contact_centre_conversations.adapters.local.channel:LocalScriptedChannel
+    gcp: contact_centre_conversations.adapters.gcp.channel:DialogflowChannel
+    onprem: contact_centre_conversations.adapters.onprem.channel:OnPremConversationChannel

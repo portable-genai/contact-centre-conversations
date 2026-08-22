@@ -1,0 +1,45 @@
+# Disclosure pack: Singapore retail contact-centre disclosures (FICTIONAL policy).
+#
+# THIS SHAPE IS SHARED WITH E3 (conversation-qa-scorecard) on purpose. The live copilot
+# reminds an agent that a window is open; the post-contact scorecard grades whether the reminder
+# worked. Both read THIS artifact, so a market's requirement is reviewed once and cannot drift
+# between the two systems.
+kind: disclosure
+pack_id: sg-retail-disclosures-v1
+market: SG
+jurisdiction: MAS
+locale: en-SG
+
+disclosures:
+  - disclosure_id: recording_notice
+    required_phrase: this call is being recorded
+    paraphrases:
+      - we record all calls
+      - the call is recorded
+      - this call may be recorded
+    trigger_event: contact_start
+    within_ms: 45000
+    severity: high
+    reminder: >-
+      Give the call-recording notice now; the window closes 45 seconds after the call starts.
+    role: agent
+  - disclosure_id: data_use_notice
+    required_phrase: we use your information to
+    paraphrases:
+      - your information is used to
+      - your personal data is used to
+    trigger_event: procedure_state:verify_identity
+    within_ms: 60000
+    severity: medium
+    reminder: State the purpose of the personal data you are about to collect.
+    role: agent
+  - disclosure_id: dispute_rights_notice
+    required_phrase: you have the right to dispute
+    paraphrases:
+      - your right to raise a dispute
+      - you may dispute this in writing
+    trigger_event: lexicon:dispute_details_taken
+    within_ms: 120000
+    severity: high
+    reminder: Tell the caller their dispute rights and the written route.
+    role: agent

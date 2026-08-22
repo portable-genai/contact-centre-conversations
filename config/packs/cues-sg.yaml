@@ -1,0 +1,28 @@
+# Cue pack: the customer-side phrases that deterministically end a self-service contact.
+#
+# Policy, per market, and reviewed: a bank decides what counts as a vulnerability signal in its
+# jurisdiction, and the answer is not the same in every one. Nothing in code knows these phrases;
+# domain/handoff.py reads the compiled lexicons.
+kind: cues
+pack_id: sg-customer-cues-v1
+market: SG
+locale: en-SG
+
+# An explicit request for a person. The customer sees this reason on their transfer, so it wins
+# over a policy code in the trigger precedence.
+escalation:
+  - speak to a person
+  - speak to a human
+  - talk to someone
+  - put me through to an agent
+  - i want a real person
+
+# Vulnerability signals. A match hands off immediately, ahead of every policy trigger except an
+# unavailable guardrail, and the receiving agent is told before they speak.
+vulnerability:
+  - i am struggling to pay
+  - i cannot afford
+  - i have been scammed
+  - someone is forcing me
+  - i am in hospital
+  - recently bereaved

@@ -1,0 +1,11 @@
+# Scripted contact (FICTIONAL): an agent-assist voice contact that goes RIGHT. Every disclosure
+# lands inside its window, so the panel shows no review banner. Fields per line: speaker_id, role,
+# text, start_ms, end_ms.
+{"speaker_id": "agent-1", "role": "agent", "text": "Thank you for calling. This call is being recorded for quality. How can I help you today?", "start_ms": 0, "end_ms": 8000}
+{"speaker_id": "customer", "role": "customer", "text": "There is a transaction on my card I did not make.", "start_ms": 8500, "end_ms": 13000}
+{"speaker_id": "agent-1", "role": "agent", "text": "I can help. We use your information to service your account. Can you confirm your date of birth and the last four digits of your card?", "start_ms": 13500, "end_ms": 24000}
+{"speaker_id": "customer", "role": "customer", "text": "Yes, it ends 4321.", "start_ms": 24500, "end_ms": 27000}
+{"speaker_id": "agent-1", "role": "agent", "text": "Thank you. When did you notice the transaction, and which merchant was it?", "start_ms": 27500, "end_ms": 34000}
+{"speaker_id": "customer", "role": "customer", "text": "Yesterday evening, a shop I have never used.", "start_ms": 34500, "end_ms": 39000}
+{"speaker_id": "agent-1", "role": "agent", "text": "Understood, and you have the right to dispute this in writing as well. I have blocked the card.", "start_ms": 39500, "end_ms": 50000}
+{"speaker_id": "agent-1", "role": "agent", "text": "You will receive a replacement card and provisional credit while we investigate.", "start_ms": 50500, "end_ms": 58000}

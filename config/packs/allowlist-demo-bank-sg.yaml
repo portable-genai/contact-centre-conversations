@@ -1,0 +1,48 @@
+# Self-service allowlist: tenant demo-bank (FICTIONAL), market SG.
+#
+# TWO allowlists, deliberately separate. `intents` is what the assistant may HANDLE; `actions` is
+# what it may TAKE. Either being empty refuses everything, which is checked before anything else
+# happens. There is no wildcard and no way to express one.
+kind: allowlist
+tenant: demo-bank
+market: SG
+locale: en-SG
+confidence_floor: 0.6
+
+intents:
+  - intent_id: card_balance
+    title: Tell the customer their card balance
+    phrases:
+      - what is my card balance
+      - card balance
+      - how much is on my card
+    actions: [read_card_balance]
+  - intent_id: recent_transactions
+    title: List recent transactions
+    phrases:
+      - recent transactions
+      - my last transactions
+      - what did i spend
+    actions: [read_recent_transactions]
+  - intent_id: report_lost_card
+    title: Take a lost-card report
+    confidence_floor: 0.8
+    phrases:
+      - i lost my card
+      - my card is missing
+      - report my card lost
+    actions: [block_card]
+  - intent_id: dispute_transaction
+    title: Take a disputed transaction
+    confidence_floor: 0.8
+    phrases:
+      - dispute a transaction
+      - i did not make this transaction
+      - unauthorised transaction
+    actions: [raise_chargeback]
+
+actions:
+  - read_card_balance
+  - read_recent_transactions
+  - block_card
+  - raise_chargeback
