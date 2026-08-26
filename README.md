@@ -60,6 +60,7 @@ make portability      # the executable portability claim, pass or fail per named
 make docs-check       # relative links resolve, fences close, no em-dash in shipped prose
 python eval/run_eval.py --rubric self_service   # one mode's rubric set on its own
 make ui-install ui-check   # the micro-frontend: tsc, node tests, production build, npm audit
+make run-voice        # the SIP/RTP telephony gateway (docs/voice-gateway.md)
 ```
 
 ## Profiles
@@ -91,12 +92,15 @@ See `docs/runbook.md`.
 
 ## Surfaces
 
-The same capability is reachable five ways, and they behave the same because they share the
+The same capability is reachable six ways, and they behave the same because they share the
 domain service rather than reimplementing it: the FastAPI app (`api/`), the argparse CLI
 (`cli/`), the agent tools (`agent/`, advertised on the A2A card at
-`/.well-known/agent-card.json`), the embeddable micro-frontend (`ui/`) and the eval harness.
+`/.well-known/agent-card.json`), the embeddable micro-frontend (`ui/`), the eval harness and
+the telephony voice gateway (`voice/`, serving self-service over an existing SIP/RTP estate
+such as a Cisco CUBE trunk; `docs/voice-gateway.md` explains the design and
+`docs/cisco-connection-guide.md` the connection and the laptop softphone test rig).
 Each of them routes an escalated result to human review in the same call that produced it, so
-rule R8 does not hold on four surfaces out of five.
+rule R8 does not hold on five surfaces out of six.
 
 `ui/` is a Next.js micro-frontend that runs standalone or embeds in a client application. Its
 security value is that the browser never asserts who the user is: every client-supplied actor,

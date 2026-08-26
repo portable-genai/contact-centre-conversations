@@ -279,6 +279,43 @@ tool table the runtime binds, so it cannot advertise a skill the service does no
 Register it with the Hrz3 registry (rule R4). The tools themselves need no agent runtime to run;
 only `build_function_tools()` imports one.
 
+## Voice gateway (telephony)
+The SIP/RTP gateway is a SECOND serving surface, started only from its own command and never
+by the API process. Design and Cisco connection are in `docs/voice-gateway.md` and
+`docs/cisco-connection-guide.md`; this is how to operate it and how it fails.
+
+Run it with `make run-voice` (`contact_centre_conversations voice-gateway`). It refuses to
+start unless self-service mode is enabled (`CONTACT_SELF_SERVICE=on` plus the promotion bundle
+under a deployed profile), the same mode gate the HTTP surface enforces, checked here before
+any socket binds. The bind host derives from the profile exactly like the HTTP surface
+(`CONTACT_VOICE_HOST` / `CONTACT_VOICE_LAN_DEMO`), so the local profile stays on loopback
+unless a LAN demo is deliberately chosen. Signalling is accepted only from
+`CONTACT_SIP_PEER_ALLOWLIST` (unset means loopback peers only; a wildcard is refused at
+startup in every spelling), and the RTP media plane enforces the same allowlist and latches to
+the first source per call.
+
+Capacity: one even RTP port per concurrent call, from `CONTACT_RTP_PORT_MIN` to
+`CONTACT_RTP_PORT_MAX` (defaults 40000 to 40100, so 51 concurrent calls). When the range is
+exhausted a new INVITE is answered `503` and the log names `no free RTP port in ...`; widen the
+range and open it on the trunk firewall. This gateway is one asyncio process with reference
+resampling: size concurrency against your own audio profile and front it with an SBC or media
+server (see the design doc's comparison) beyond double-digit concurrency.
+
+Failure modes to expect:
+- **No tenant for the dialled number:** `503` at INVITE naming the DNIS. Map the number under
+  `voice.dnis` in `config/settings.yaml`, or set a default `CONTACT_TENANT`.
+- **Offer not PCMU:** `488 Not Acceptable Here`. The gateway answers G.711 mu-law only;
+  configure the dial-peer codec, or terminate other codecs on an SBC in front.
+- **The managed voice engine cannot reach its service:** the cascade engine needs
+  `google-cloud-speech` and `google-cloud-texttospeech` in the serving image and reachable
+  regional endpoints; a failed session ends the call after a spoken apology and a transfer,
+  and the log names the failure. The optional Gemini Live engine additionally runs outside the
+  pinned region and sends pre-redaction audio to the model (stated in the design doc and
+  `COMPLIANCE.md`); it is not the default binding.
+- **A caller keeps hearing silence:** the local profile's offline engine voices silent
+  length-only audio by design; a managed profile with a live engine speaks. Continuous RTP
+  (including silence while listening) is intentional, so a quiet call is not a dead one.
+
 ## Running the integration tests
 `make test-integration` runs `tests/integration/`, which the offline gate deselects. Each test
 SKIPS rather than fails when its configuration is absent, so an unconfigured run reports nothing

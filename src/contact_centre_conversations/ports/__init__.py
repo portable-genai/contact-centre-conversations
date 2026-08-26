@@ -41,6 +41,7 @@ from .retrieval import RetrievalPort
 from .review_router import ReviewRouterPort
 from .speech import DiarizationPort, SpeechToTextPort, TextToSpeechPort
 from .tool_catalog import ToolCatalogPort
+from .voice_engine import VoiceEnginePort
 
 #: port name (the key in the settings ``adapters:`` block) -> the Protocol it must satisfy.
 PORT_PROTOCOLS: dict[str, type] = {
@@ -58,6 +59,7 @@ PORT_PROTOCOLS: dict[str, type] = {
     "tool_catalog": ToolCatalogPort,
     "tracer": ObservabilityTracerPort,
     "evaluation": EvaluationGatePort,
+    "voice_engine": VoiceEnginePort,
 }
 
 __all__ = [
@@ -78,6 +80,7 @@ __all__ = [
     "GenerationPort",
     "GuardrailPort",
     "IdentityPort",
+    "VoiceEnginePort",
     "RetrievalPort",
     "ReviewRouterPort",
     "SpeechToTextPort",

@@ -1,4 +1,4 @@
-.PHONY: install install-unlocked lock lint fmt test test-integration eval gate audit run-api \
+.PHONY: install install-unlocked lock lint fmt test test-integration eval gate audit run-api run-voice \
         demo demo-selftest demo-static demo-server portability docs-check tf-check \
         ui-install ui-check ui-dev drop-ui
 
@@ -68,6 +68,12 @@ audit:
 
 run-api:
 	python -m contact_centre_conversations.api.app
+
+# The SIP/RTP telephony gateway (docs/voice-gateway.md). Refuses unless self-service mode is
+# enabled, like every other surface. Local profile binds loopback: a softphone on THIS machine
+# can call it; set CONTACT_VOICE_LAN_DEMO deliberately to demo across a LAN.
+run-voice:
+	contact_centre_conversations voice-gateway
 
 # --------------------------------------------------------------------------------------- #
 # The demo surface. Deliberately OUTSIDE `make gate`: the gate proves the service and must stay

@@ -19,6 +19,7 @@ merely written down.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -55,6 +56,11 @@ from contact_centre_conversations.domain.models import (
     ScreenOutcome,
     ScreenResult,
     SelfServiceResult,
+)
+from contact_centre_conversations.ports.voice_engine import (
+    CallerUtterance,
+    EngineAudio,
+    VoiceSessionConfig,
 )
 
 from tests.fixtures import sample_cases
@@ -273,6 +279,30 @@ def _diarization_answered(_adapter: Any, result: Any) -> bool:
     return bool(result.segments)
 
 
+def _voice_engine_invoke(adapter: Any) -> Any:
+    """One tiny call: connect, hear one caller utterance, voice one line, hang up."""
+
+    async def drive() -> dict[str, Any]:
+        session = await adapter.connect(VoiceSessionConfig(contact=sample_cases.CUSTOMER_CONTACT))
+        await session.send_caller_text("what is my card balance")
+        events = session.events()
+        first = await anext(events)
+        spoken = await session.say("Thank you for calling.")
+        await session.close()
+        return {"first": first, "spoken": spoken}
+
+    return asyncio.run(drive())
+
+
+def _voice_engine_answered(_adapter: Any, result: Any) -> bool:
+    return (
+        isinstance(result["first"], CallerUtterance)
+        and bool(result["first"].text)
+        and isinstance(result["spoken"], EngineAudio)
+        and len(result["spoken"].pcm) > 0
+    )
+
+
 def _channel_invoke(adapter: Any) -> Any:
     contact = sample_cases.AGENT_CONTACT
     adapter.open(contact)
@@ -390,6 +420,13 @@ CANONICAL_CALLS: dict[str, PortCase] = {
         answered=_channel_answered,
         managed_refusal=(ImportError,),
         detail="open a session, read inbound turns, deliver one message",
+    ),
+    "voice_engine": PortCase(
+        invoke=_voice_engine_invoke,
+        answered=_voice_engine_answered,
+        # The lazy speech SDK import is the first thing the managed cascade engine does.
+        managed_refusal=(ImportError,),
+        detail="open a realtime session, hear one utterance, voice one line",
     ),
     "tracer": PortCase(
         invoke=_tracer_invoke,

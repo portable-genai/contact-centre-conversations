@@ -80,6 +80,45 @@ tool_catalog_url: ${CONTACT_TOOL_CATALOG_URL:-}
 # The managed model the generation adapter asks for. Configuration, never a literal in a module.
 model: ${CONTACT_MODEL:-gemini-3.5-flash}
 
+# The telephony voice gateway (docs/voice-gateway.md). The gateway itself starts only from the
+# `voice-gateway` CLI subcommand and refuses unless self-service mode is enabled; this block
+# only CONFIGURES it. Defaults are offline-safe: loopback-only signalling peers, no transfer
+# target, and the managed model names are configuration rather than literals. The bind host is
+# NOT configured here: it derives from the profile (CONTACT_VOICE_HOST /
+# CONTACT_VOICE_LAN_DEMO), exactly like the HTTP surface.
+voice:
+  sip_port: ${CONTACT_SIP_PORT:-5060}
+  rtp_port_min: ${CONTACT_RTP_PORT_MIN:-40000}
+  rtp_port_max: ${CONTACT_RTP_PORT_MAX:-40100}
+  # The trunk addresses allowed to send signalling (the CUBE side), comma-separated IPs or
+  # CIDRs. Unset means loopback peers only; a deliberately EMPTIED value refuses to resolve
+  # (three states, as everywhere); a wildcard is refused at startup in every spelling.
+  peer_allowlist: ${CONTACT_SIP_PEER_ALLOWLIST:-}
+  # Where a handoff REFERs the caller: a full SIP URI, or bare digits the peer's dial-peers
+  # route (CUBE re-routes by digits, not by the Refer-To host). Empty means no transfer target
+  # exists yet and a handoff ends the call honestly after the spoken handoff line.
+  transfer_target: ${CONTACT_VOICE_TRANSFER_TARGET:-}
+  # Managed voice-path names. The engine BINDING lives under `adapters.voice_engine` below.
+  tts_voice: ${CONTACT_VOICE_TTS_VOICE:-en-US-Chirp3-HD-Kore}
+  stt_model: ${CONTACT_VOICE_STT_MODEL:-telephony_short}
+  live_model: ${CONTACT_VOICE_LIVE_MODEL:-gemini-live-2.5-flash-native-audio}
+  # The Live API serves US and EU regions only today, so its region is DELIBERATELY separate
+  # from the deployment region: a deployment either accepts that stated deviation here or
+  # keeps the cascade engine and deviates nowhere.
+  live_region: ${CONTACT_VOICE_LIVE_REGION:-us-central1}
+  live_endpoint: ${CONTACT_VOICE_LIVE_ENDPOINT:-vertex}
+  dtmf_terminator: "#"
+  dtmf_timeout_ms: 3000
+  # Cross-channel continuity: how often a live call polls the contact store for chat turns
+  # arriving mid-call. Zero disables the bridge.
+  chat_poll_ms: ${CONTACT_VOICE_CHAT_POLL_MS:-1000}
+  contact_header: X-Contact-Id
+  default_market: ${CONTACT_VOICE_MARKET:-SG}
+  default_locale: ${CONTACT_VOICE_LOCALE:-en-SG}
+  # DNIS routing: dialled number -> tenant/market/locale. The tenant a call lands in is
+  # decided here or by the `tenant` default above, never by anything the caller sent.
+  dnis: {}
+
 # The per-port adapter map: the ONLY place a binding lives, so switching the whole stack is a
 # configuration change rather than a code edit. Every port must bind every profile; the loader
 # refuses a partial block and `tests/test_settings_file.py` fails the build if this drifts from
@@ -152,3 +191,16 @@ adapters:
     local: contact_centre_conversations.adapters.local.channel:LocalScriptedChannel
     gcp: contact_centre_conversations.adapters.gcp.channel:DialogflowChannel
     onprem: contact_centre_conversations.adapters.onprem.channel:OnPremConversationChannel
+
+  # The realtime voice engine behind the SIP/RTP gateway. The managed default is the CASCADE
+  # engine (streaming recognition in, deterministic synthesis out): every invariant intact,
+  # every leg region-pinned. A deployment that accepts the Gemini Live trade-offs stated in
+  # docs/voice-gateway.md swaps the gcp line below for
+  # contact_centre_conversations.adapters.gcp.voice_live:GeminiLiveVoiceEngine and makes the
+  # SAME edit to DEFAULT_BINDINGS in config.py. It is a literal, not an env expansion, so the
+  # two homes of the binding table cannot silently diverge and the documented swap never turns
+  # the drift gate red.
+  voice_engine:
+    local: contact_centre_conversations.adapters.local.voice_engine:ScriptedVoiceEngine
+    gcp: contact_centre_conversations.adapters.gcp.voice_cascade:CascadeVoiceEngine
+    onprem: contact_centre_conversations.adapters.onprem.voice_engine:OnPremVoiceEngine
