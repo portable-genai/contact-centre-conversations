@@ -8,6 +8,7 @@ and a gate with a second way in is not a gate.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import sys
 
 from hex_service_kit.logging import configure_logging
@@ -48,10 +49,30 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("modes", help="Show which modes this deployment serves.")
 
+    sub.add_parser(
+        "voice-gateway",
+        help="Serve the SIP/RTP telephony gateway (requires self-service mode; see "
+        "docs/voice-gateway.md).",
+    )
+
     args = parser.parse_args(argv)
     container = build_container()
     # Idempotent: a process that is both an API app and a CLI configures once.
     configure_logging(container.settings.profile, service="contact-centre-conversations")
+
+    if args.command == "voice-gateway":
+        # The gateway refuses inside start_gateway unless self-service is enabled, the same
+        # gate every other surface checks, so telephone reachability is never a second door.
+        from ..voice.gateway import serve_forever  # noqa: PLC0415 - keep CLI import light
+
+        try:
+            asyncio.run(serve_forever(container))
+        except ModeDisabledError as exc:
+            print(f"refused: {exc}", file=sys.stderr)
+            return 3
+        except KeyboardInterrupt:
+            pass
+        return 0
 
     if args.command == "modes":
         for gate in (container.settings.modes.agent_assist, container.settings.modes.self_service):

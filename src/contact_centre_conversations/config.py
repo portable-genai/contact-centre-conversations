@@ -63,6 +63,7 @@ from .ports.retrieval import RetrievalPort
 from .ports.review_router import ReviewRouterPort
 from .ports.speech import DiarizationPort, SpeechToTextPort, TextToSpeechPort
 from .ports.tool_catalog import ToolCatalogPort
+from .ports.voice_engine import VoiceEnginePort
 
 _PROFILE_ENV = "CONTACT_PROFILE"
 _SETTINGS_ENV = "CONTACT_SETTINGS"
@@ -292,6 +293,17 @@ DEFAULT_BINDINGS: dict[str, dict[str, str]] = {
         "gcp": f"{_PKG}.adapters.gcp.channel:DialogflowChannel",
         "onprem": f"{_PKG}.adapters.onprem.channel:OnPremConversationChannel",
     },
+    # The realtime voice engine behind the SIP/RTP gateway. The managed default is the CASCADE
+    # engine (streaming recognition in, deterministic synthesis out) because it keeps every
+    # invariant and the region pin; a deployment that accepts the Gemini Live trade-offs
+    # (docs/voice-gateway.md) rebinds this port to
+    # `contact_centre_conversations.adapters.gcp.voice_live:GeminiLiveVoiceEngine` in
+    # `config/settings.yaml`, which is a configuration change, not a code edit.
+    "voice_engine": {
+        "local": f"{_PKG}.adapters.local.voice_engine:ScriptedVoiceEngine",
+        "gcp": f"{_PKG}.adapters.gcp.voice_cascade:CascadeVoiceEngine",
+        "onprem": f"{_PKG}.adapters.onprem.voice_engine:OnPremVoiceEngine",
+    },
 }
 
 _ENV_REF = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
@@ -377,6 +389,115 @@ def _bindings_from(data: Mapping[str, Any]) -> dict[str, dict[str, str]]:
 
 
 @dataclass(frozen=True, slots=True)
+class VoiceSettings:
+    """The telephony voice gateway's configuration block (``voice:`` in the settings file).
+
+    Defaults are the offline-safe ones: loopback-only peers, no transfer target (a transfer
+    request ends the call honestly instead of REFERring into the void), and the managed model
+    names are configuration rather than literals, like every other model in this file.
+    """
+
+    #: UDP port the SIP UAS listens on. The BIND HOST is not configured here: it derives from
+    #: the profile through ``resolve_bind_host``, exactly like the HTTP surface.
+    sip_port: int = 5060
+    #: The RTP port range, one even port per concurrent call. Keep it narrow: every port here
+    #: is a firewall rule on the trunk path.
+    rtp_port_min: int = 40_000
+    rtp_port_max: int = 40_100
+    #: Comma-separated IPs/CIDRs allowed to send signalling (the CUBE addresses). Empty means
+    #: loopback peers only; a wildcard is refused at startup in every spelling.
+    peer_allowlist: str = ""
+    #: Where a handoff REFERs the caller: a full SIP URI, or bare digits routed by the peer's
+    #: dial-peers. Empty means no transfer target exists and a handoff ends the call.
+    transfer_target: str = ""
+    #: Deterministic service prose. Reviewed wording, spoken through synthesis, never a model.
+    greeting: str = (
+        "You are connected to the automated assistant. This call may be recorded. "
+        "How can I help you today?"
+    )
+    #: The system instruction handed to an AUTHORING engine. The gate does not depend on it.
+    system_prompt: str = (
+        "You are a bank contact-centre self-service assistant. Answer only questions about "
+        "the caller's banking service needs, briefly and politely. Use the declared tools for "
+        "any account action. If the caller asks for anything else, say you will connect them "
+        "to a person."
+    )
+    #: Managed voice + model names: configuration, never literals in an adapter.
+    tts_voice: str = "en-US-Chirp3-HD-Kore"
+    stt_model: str = "telephony_short"
+    live_model: str = "gemini-live-2.5-flash-native-audio"
+    #: Where the Live session runs. The Live API serves US and EU regions only today, so this
+    #: is DELIBERATELY separate from the deployment region: the residency deviation is chosen
+    #: here, loudly, or the cascade engine is used and there is no deviation.
+    live_region: str = "us-central1"
+    #: ``vertex`` (service credentials, the enterprise path) or ``api`` (the global Gemini API).
+    live_endpoint: str = "vertex"
+    #: DTMF collection: the terminator key and the inter-digit silence that closes a string.
+    dtmf_terminator: str = "#"
+    dtmf_timeout_ms: int = 3000
+    #: How often the live session polls the contact store for chat turns arriving mid-call.
+    #: Zero disables the cross-channel bridge.
+    chat_poll_ms: int = 1000
+    #: SIP header a TRUSTED peer may use to carry a known contact id into the call, which is
+    #: what lets a web-chat session continue over the phone. Ignored unless it matches the
+    #: contact-id shape; the peer allowlist is what makes trusting the header sane.
+    contact_header: str = "X-Contact-Id"
+    #: Fallbacks when a dialled number (DNIS) has no entry in :attr:`dnis`.
+    default_market: str = "SG"
+    default_locale: str = "en-SG"
+    #: DNIS routing: dialled number -> {tenant, market, locale}. The tenant a call lands in is
+    #: decided HERE or by the deployment default, never by anything the caller sent.
+    dnis: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.rtp_port_min > self.rtp_port_max:
+            raise ValueError("voice.rtp_port_min must not exceed voice.rtp_port_max")
+        if self.live_endpoint not in ("vertex", "api"):
+            raise ValueError(
+                f"voice.live_endpoint {self.live_endpoint!r} is not one of: vertex, api"
+            )
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any] | None) -> VoiceSettings:
+        if data is None:
+            return cls()
+        if not isinstance(data, Mapping):
+            raise ValueError("settings 'voice' must be a mapping")
+        dnis_block = data.get("dnis") or {}
+        if not isinstance(dnis_block, Mapping):
+            raise ValueError("settings 'voice.dnis' must map dialled numbers to route mappings")
+        dnis: dict[str, dict[str, str]] = {}
+        for number, route in dnis_block.items():
+            if not isinstance(route, Mapping):
+                raise ValueError(f"settings 'voice.dnis.{number}' must be a mapping")
+            dnis[str(number)] = {str(k): str(v) for k, v in route.items()}
+        defaults = cls()
+        return cls(
+            sip_port=int(data.get("sip_port") or defaults.sip_port),
+            rtp_port_min=int(data.get("rtp_port_min") or defaults.rtp_port_min),
+            rtp_port_max=int(data.get("rtp_port_max") or defaults.rtp_port_max),
+            peer_allowlist=str(data.get("peer_allowlist") or ""),
+            transfer_target=str(data.get("transfer_target") or ""),
+            greeting=str(data.get("greeting") or defaults.greeting),
+            system_prompt=str(data.get("system_prompt") or defaults.system_prompt),
+            tts_voice=str(data.get("tts_voice") or defaults.tts_voice),
+            stt_model=str(data.get("stt_model") or defaults.stt_model),
+            live_model=str(data.get("live_model") or defaults.live_model),
+            live_region=str(data.get("live_region") or defaults.live_region),
+            live_endpoint=str(data.get("live_endpoint") or defaults.live_endpoint),
+            dtmf_terminator=str(data.get("dtmf_terminator") or defaults.dtmf_terminator),
+            dtmf_timeout_ms=int(data.get("dtmf_timeout_ms") or defaults.dtmf_timeout_ms),
+            chat_poll_ms=int(
+                data["chat_poll_ms"] if data.get("chat_poll_ms") is not None else 1000
+            ),
+            contact_header=str(data.get("contact_header") or defaults.contact_header),
+            default_market=str(data.get("default_market") or defaults.default_market),
+            default_locale=str(data.get("default_locale") or defaults.default_locale),
+            dnis=dnis,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class Settings:
     """Deployment settings, resolved from the settings file and the environment."""
 
@@ -426,6 +547,8 @@ class Settings:
     #: The reviewed policy packs. EMPTY by default, which is the fail-closed state: an empty
     #: allowlist refuses, an absent procedure pack refuses, and neither invents a default.
     packs: PackLibrary = field(default_factory=PackLibrary.empty)
+    #: The telephony voice gateway block. Defaults are offline-safe; see :class:`VoiceSettings`.
+    voice: VoiceSettings = field(default_factory=VoiceSettings)
     #: Was :attr:`profile` chosen DELIBERATELY, or merely inherited because nobody set the
     #: variable? Only :meth:`load` can set this False; direct construction names the profile in
     #: code and is deliberate by definition. The seeded-persona identity adapter refuses to
@@ -473,6 +596,7 @@ class Settings:
                 profile_explicit=choice.explicit,
             ),
             packs=load_packs(Path(packs_path)),
+            voice=VoiceSettings.from_mapping(data.get("voice")),
             adapters=_bindings_from(data),
         )
 
@@ -572,6 +696,12 @@ class Container:
     def conversation_channel(self) -> ConversationChannelPort:
         adapter = self._bind("conversation_channel")
         assert isinstance(adapter, ConversationChannelPort)
+        return adapter
+
+    @cached_property
+    def voice_engine(self) -> VoiceEnginePort:
+        adapter = self._bind("voice_engine")
+        assert isinstance(adapter, VoiceEnginePort)
         return adapter
 
 

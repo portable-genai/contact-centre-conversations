@@ -16,7 +16,10 @@ toward it. Package `contact_centre_conversations`, environment prefix
 
 `docs/runbook.md` and `docs/onprem-migration.md` are operational and never restate product
 behaviour. `docs/practices-audit.md` records the per-check verdict against the common base
-practices, and it is the file to update when a gap closes.
+practices, and it is the file to update when a gap closes. `docs/voice-gateway.md` owns the
+telephony voice gateway's design (the `voice_engine` port, the two managed engines and their
+stated trade-offs, the SIP-termination comparison) and `docs/cisco-connection-guide.md` owns
+how a company connects and tests it; neither is restated here.
 
 ## The hard gate
 
