@@ -43,3 +43,7 @@ demo.json
 .idea/
 .vscode/
 .DS_Store
+
+# Local audio artifacts (narration scripts, generated MP3s). Not committed: the MP3 is a
+# regenerable byproduct of a paid TTS call, and the audio/ tree is a scratch space.
+audio/
