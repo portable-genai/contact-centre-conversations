@@ -239,7 +239,12 @@ def _case(case: dict[str, Any]) -> str:
 
 
 def render(payload: dict[str, Any]) -> str:
-    runs = payload["runs"]
+    runs = payload.get("runs") or []
+    if not runs:
+        # A page summing nothing would show zero failures and an overall PASS, which is a
+        # verdict over no evidence. The writer refuses to produce such a file; refuse to paint
+        # one anyway, in case the input did not come from the writer.
+        raise SystemExit("the report contains no runs, so there is nothing to render")
     total = sum(len(run["cases"]) for run in runs)
     failing = sum(1 for run in runs for row in run["rows"] if not row["passed"])
     metrics_failing = sum(1 for run in runs for m in run["metrics"] if not m["passed"])

@@ -155,7 +155,16 @@ def write_artifact(artifacts: list[EvalRunArtifact], path: Path) -> Path:
 
     One file rather than one per rubric: the two modes are scored separately and reviewed
     together, and a reviewer opening a report wants both in front of them.
+
+    An EMPTY list is refused rather than written. A report file with no runs in it still looks
+    like a report: it has a schema version, it parses, and a renderer that summed nothing over
+    it would paint zero failures as a pass. The absence of runs is a caller bug, not a result.
     """
+    if not artifacts:
+        raise ValueError(
+            "no run artifacts were produced, so there is no report to write. A report file "
+            "with zero runs would read as a clean run rather than as an absent one."
+        )
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "schema_version": SCHEMA_VERSION,
