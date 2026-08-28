@@ -151,6 +151,42 @@ def test_an_empty_table_is_refused(tmp_path: Path) -> None:
         narrative.load_cases(empty)
 
 
+def _one_row(**overrides: object) -> dict:
+    row: dict = {
+        "id": "case-1",
+        "vertical": "contact-centre-conversations-self-service",
+        "subject": "a card balance question",
+        "criteria": [{"name": "answers", "must_cover": ["balance"]}],
+        "candidates": {"managed": "good", "reduced": "ok", "regressed": "bad"},
+        "expected": {"managed": "fit", "reduced": "degraded", "regressed": "unfit"},
+    }
+    row.update(overrides)
+    return row
+
+
+def test_a_case_missing_a_profiles_candidate_is_refused_by_name(tmp_path: Path) -> None:
+    """Held to the loading standard of the deterministic scenarios: a malformed row must name
+    itself, not surface as a KeyError after half the table was already graded."""
+    import json
+
+    table = tmp_path / "table.jsonl"
+    row = _one_row()
+    del row["candidates"]["reduced"]
+    table.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    with pytest.raises(narrative.NarrativeEvalError, match=r"case-1.*'reduced' candidate"):
+        narrative.load_cases(table)
+
+
+def test_a_case_with_an_unknown_band_is_refused_by_name(tmp_path: Path) -> None:
+    import json
+
+    table = tmp_path / "table.jsonl"
+    row = _one_row(expected={"managed": "fit", "reduced": "degraded", "regressed": "terrible"})
+    table.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    with pytest.raises(narrative.NarrativeEvalError, match=r"case-1.*not a fitness band"):
+        narrative.load_cases(table)
+
+
 def test_the_measured_bands_match_the_table() -> None:
     """The run itself, as a test, so a band moving fails the build and not only the command."""
     assert narrative.main([]) == 0

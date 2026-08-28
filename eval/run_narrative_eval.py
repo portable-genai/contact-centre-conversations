@@ -84,13 +84,39 @@ class Measured:
         return self.fitness is self.expected
 
 
+def _validated(case: dict[str, Any], path: Path) -> dict[str, Any]:
+    """One table row, checked hard on the way in, naming the case rather than a KeyError.
+
+    The judged half is held to the same loading standard as the deterministic scenarios in
+    ``eval_schema``: a row that is missing a profile's candidate or expectation would otherwise
+    surface as a bare traceback deep inside :func:`measure`, after part of the table had
+    already been graded.
+    """
+    where = f"{path}[{case.get('id') or '?'}]"
+    for key in ("id", "vertical", "candidates", "expected", "criteria"):
+        if not case.get(key):
+            raise NarrativeEvalError(f"{where}: {key!r} is required and must not be empty")
+    for profile in PROFILES:
+        candidate = (case["candidates"] or {}).get(profile)
+        if not isinstance(candidate, str) or not candidate.strip():
+            raise NarrativeEvalError(f"{where}: no {profile!r} candidate, so it cannot be judged")
+        band = (case["expected"] or {}).get(profile)
+        try:
+            Fitness(str(band))
+        except ValueError:
+            raise NarrativeEvalError(
+                f"{where}: expected[{profile!r}] is {band!r}, which is not a fitness band"
+            ) from None
+    return case
+
+
 def load_cases(path: Path = DATASET) -> list[dict[str, Any]]:
     cases: list[dict[str, Any]] = []
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        cases.append(json.loads(line))
+        cases.append(_validated(json.loads(line), path))
     if not cases:
         raise NarrativeEvalError(f"{path}: the degradation table is empty, so nothing is judged")
     return cases
