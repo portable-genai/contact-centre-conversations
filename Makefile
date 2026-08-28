@@ -146,3 +146,11 @@ ui-dev:
 # halves agree, in either direction.
 drop-ui:
 	$(PYRUN) scripts/drop_ui.py
+
+# The reviewer's report. Deliberately OUTSIDE `make gate`, like the demo surface: the gate's
+# contract is console output plus an exit status, and a browsable report is a separate job.
+# `run_eval.py` emits the JSON and `render_eval_report.py` only paints it, so the report cannot
+# show one thing while the eval computed another.
+eval-report:
+	$(PYRUN) eval/run_eval.py --emit out/evals/report.json
+	$(PYRUN) scripts/render_eval_report.py out/evals/report.json out/evals

@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import Any
 
 import eval_schema
+import report_artifact
 import yaml
 from agent_eval_kit import EvalMetricResult, EvalReport, PromotionGateClient, print_report
 from pii_kit import pack_leak
@@ -134,6 +135,11 @@ BUNDLES: dict[str, str] = {
 
 _AS_OF = datetime(2026, 8, 8, 9, 0, tzinfo=UTC)
 
+#: Per-case detail from the most recent run of each rubric, for the report artifact. Held beside
+#: the report rather than inside it because ``EvalReport`` is the commons' frozen type and is
+#: per-metric by design; see ``eval/report_artifact.py``.
+_DETAIL: dict[str, list[Any]] = {}
+
 
 def load_scenarios(root: Path, mode: str) -> list[dict[str, Any]]:
     """Every scenario for ``mode`` under ``root``, validated on the way in."""
@@ -180,6 +186,100 @@ def _resolvable(settings: Settings, passage_id: str, case: dict[str, Any]) -> bo
     if not row or not row.get("source_ref", "").strip():
         return False
     return row.get("market") == case["market"] and row.get("vertical") == case["vertical"]
+
+
+#: What to change when a metric goes red, per metric. Named here rather than left to a reader
+#: because a red row without a next step is a red row that gets argued about rather than fixed,
+#: and in this service the answer is almost always a reviewed artifact rather than any code.
+_REMEDIATION = {
+    "gate_precision": "the allowlist pack for this tenant, market and vertical, or the label",
+    "handoff_safety": "the cue pack, or the expected trigger on this turn",
+    "maker_checker_safety": "the action catalog's consequential flag, or the label",
+    "containment": "the allowlist intents: this is a coverage question, not a defect",
+    "customer_party_isolation_safety": "config/parties/records.jsonl, or the ownership check",
+    "customer_citation_audience_safety": "the passage's audience in config/kb/passages.jsonl",
+    "injection_handling_safety": "the guardrail cue list, or the labelled outcome",
+    "escalation_recall": "the escalation table, or expected_escalation on this scenario",
+    "review_routing_safety": "the review router binding, or the audit sink",
+    "customer_pii_safety": "the PII pattern set, or what the audit summary is built from",
+    "next_step_accuracy": "the procedure pack's states, or the expected state",
+    "reminder_timeliness": "the disclosure pack's windows, or the expected due and missed lists",
+    "citation_accuracy": "the corpus, or the expected citations",
+    "groundedness": "the corpus, or the expected grounded facts",
+    "citation_audience_accuracy": "the passage's market and vertical, or its source_ref",
+    "audit_completeness": "the audit sink binding, or the review router",
+    "pii_safety": "the PII pattern set, or what the audit summary is built from",
+}
+
+
+def _case_result(
+    case: dict[str, Any],
+    rubric: str,
+    turns: list[report_artifact.TurnRecord],
+    **facts: Any,
+) -> report_artifact.CaseResult:
+    """One conversation's drill-down record, with a per-case verdict per turn-level dimension.
+
+    The per-case dimensions are the ones a reviewer can act on by looking at THIS conversation.
+    Run-level metrics (the PII scan, the audit counts) are properties of the whole run and are
+    reported once, in the rollup, rather than smeared across cases that did not cause them.
+    """
+    dimensions: list[report_artifact.DimensionScore] = []
+    if rubric == SELF_SERVICE:
+        # Guarded rather than filtered inside the loop: the comparisons below read fields only a
+        # self-service turn carries, and a tuple of them is built before any filter could skip it.
+        for metric, matched in (
+            ("gate_precision", all(t.actual["outcome"] == t.expected["outcome"] for t in turns)),
+            ("handoff_safety", all(t.actual["handoff"] == t.expected["handoff"] for t in turns)),
+            (
+                "maker_checker_safety",
+                all(t.actual["executed"] == t.expected["executed"] for t in turns),
+            ),
+        ):
+            dimensions.append(
+                report_artifact.DimensionScore(
+                    metric=metric,
+                    score=1.0 if matched else 0.0,
+                    threshold=THRESHOLDS[rubric].get(metric, 1.0),
+                    passed=matched,
+                    remediation="" if matched else _REMEDIATION.get(metric, ""),
+                )
+            )
+    if rubric == SELF_SERVICE and case["expected_escalation"]:
+        reached = bool(facts.get("escalated")) and bool(facts.get("routed"))
+        dimensions.append(
+            report_artifact.DimensionScore(
+                metric="escalation_recall",
+                score=1.0 if reached else 0.0,
+                threshold=THRESHOLDS[rubric]["escalation_recall"],
+                passed=reached,
+                detail="a reviewer said this contact must reach a human",
+                remediation="" if reached else _REMEDIATION["escalation_recall"],
+            )
+        )
+    for metric, ok, detail in facts.get("extra", ()):
+        dimensions.append(
+            report_artifact.DimensionScore(
+                metric=metric,
+                score=1.0 if ok else 0.0,
+                threshold=THRESHOLDS[rubric].get(metric, 1.0),
+                passed=ok,
+                detail=detail,
+                remediation="" if ok else _REMEDIATION.get(metric, ""),
+            )
+        )
+    return report_artifact.CaseResult(
+        case_id=case["id"],
+        rubric=rubric,
+        family=case["family"],
+        market=case["market"],
+        vertical=case["vertical"],
+        tenant=case["tenant"],
+        party_ref=case["party_ref"],
+        note=case.get("note", ""),
+        turns=tuple(turns),
+        dimensions=tuple(dimensions),
+    )
 
 
 def _leaked(container: Any, cases: list[dict[str, Any]]) -> bool:
@@ -285,6 +385,7 @@ def run_agent_assist(dataset: Path, settings: Settings | None = None) -> EvalRep
     audience: list[float] = []
     routing: list[float] = []
     accepted_turns = 0
+    detail: list[report_artifact.CaseResult] = []
 
     for case in cases:
         contact = _contact(case, ContactMode.AGENT_ASSIST)
@@ -328,6 +429,42 @@ def run_agent_assist(dataset: Path, settings: Settings | None = None) -> EvalRep
         routing.append(
             1.0 if (not result.requires_human_review) or bool(result.review_ref) else 0.0
         )
+        detail.append(
+            _case_result(
+                case,
+                AGENT_ASSIST,
+                [
+                    report_artifact.TurnRecord(
+                        index=position,
+                        text=str(t["text"]),
+                        expected={},
+                        actual={"role": t.get("role", "agent")},
+                    )
+                    for position, t in enumerate(turns)
+                ],
+                extra=(
+                    (
+                        "next_step_accuracy",
+                        result.progress.state_id == case["expected_state"],
+                        f"reached {result.progress.state_id!r}, "
+                        f"expected {case['expected_state']!r}",
+                    ),
+                    (
+                        "citation_accuracy",
+                        _citation_score(result, case) == 1.0,
+                        "cited "
+                        + str(list(result.suggestion.passage_ids) if result.suggestion else [])
+                        + f", expected {case['expected_citations']}",
+                    ),
+                    (
+                        "reminder_timeliness",
+                        sorted(s.disclosure_id for s in result.disclosures.missed)
+                        == sorted(case["expected_missed"]),
+                        "missed " + str(sorted(s.disclosure_id for s in result.disclosures.missed)),
+                    ),
+                ),
+            )
+        )
 
     leaked = _leaked(container, cases)
     records = container.audit.log.read_all()
@@ -336,6 +473,7 @@ def run_agent_assist(dataset: Path, settings: Settings | None = None) -> EvalRep
         len(tagged) == accepted_turns and container.audit.verify().ok and _mean(routing) == 1.0
     )
 
+    _DETAIL[AGENT_ASSIST] = detail
     thresholds = THRESHOLDS[AGENT_ASSIST]
     return EvalReport(
         dataset=str(dataset),
@@ -490,9 +628,11 @@ def run_self_service(dataset: Path, settings: Settings | None = None) -> EvalRep
     routing: list[float] = []
     accepted_turns = 0
     record_parameters = _record_parameters(resolved)
+    detail: list[report_artifact.CaseResult] = []
 
     for case in cases:
         session = SessionState()
+        turn_records: list[report_artifact.TurnRecord] = []
         contact = _contact(case, ContactMode.SELF_SERVICE)
         escalated = False
         routed = False
@@ -537,6 +677,38 @@ def run_self_service(dataset: Path, settings: Settings | None = None) -> EvalRep
             if case["family"].startswith("injection_") or case["family"] == "handoff_jailbreak":
                 injection.append(1.0 if matched and result.suggestion is None else 0.0)
 
+            turn_records.append(
+                report_artifact.TurnRecord(
+                    index=index,
+                    text=str(turn["text"]),
+                    expected={
+                        "outcome": turn["expected_outcome"],
+                        "handoff": turn["expected_handoff"],
+                        "executed": turn["expected_executed"],
+                    },
+                    actual={
+                        "outcome": result.verdict.outcome.value,
+                        "handoff": trigger,
+                        "executed": executed,
+                    },
+                    citations=tuple(
+                        {
+                            "source_id": c.source_id,
+                            "title": c.title,
+                            "source_ref": c.source_ref,
+                        }
+                        for c in (result.suggestion.citations if result.suggestion else ())
+                    ),
+                    notes=tuple(
+                        note
+                        for note in (
+                            result.action.detail if result.action else "",
+                            f"review_ref: {result.review_ref}" if result.review_ref else "",
+                        )
+                        if note
+                    ),
+                )
+            )
             escalated = escalated or result.requires_human_review
             routed = routed or bool(result.review_ref)
             handed_off = handed_off or result.handoff is not None
@@ -548,6 +720,15 @@ def run_self_service(dataset: Path, settings: Settings | None = None) -> EvalRep
             escalation_recall.append(1.0 if escalated and routed else 0.0)
         if not case["adversarial"]:
             contained.append(1.0 if final_allowed and not handed_off else 0.0)
+        detail.append(
+            _case_result(
+                case,
+                SELF_SERVICE,
+                turn_records,
+                escalated=escalated,
+                routed=routed,
+            )
+        )
 
     leaked = _leaked(container, cases)
     records = container.audit.log.read_all()
@@ -556,6 +737,7 @@ def run_self_service(dataset: Path, settings: Settings | None = None) -> EvalRep
         len(tagged) == accepted_turns and container.audit.verify().ok and _mean(routing) == 1.0
     )
 
+    _DETAIL[SELF_SERVICE] = detail
     thresholds = THRESHOLDS[SELF_SERVICE]
     return EvalReport(
         dataset=str(dataset),
@@ -644,6 +826,33 @@ def _quality_url() -> str:
 # --------------------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------------------- #
+def _artifact(rubric: str, report: EvalReport) -> report_artifact.EvalRunArtifact:
+    """Fold one rubric's run into the browsable artifact, rollups and cases together."""
+    cases = tuple(_DETAIL.get(rubric, ()))
+    metrics = tuple(
+        report_artifact.DimensionScore(
+            metric=result.metric,
+            score=result.score,
+            threshold=result.threshold,
+            passed=result.passed,
+            remediation="" if result.passed else _REMEDIATION.get(result.metric, ""),
+        )
+        for result in report.results
+    )
+    return report_artifact.EvalRunArtifact(
+        schema_version=report_artifact.SCHEMA_VERSION,
+        run_id=report.run_id,
+        rubric=rubric,
+        dataset=report.dataset,
+        dataset_digest=report.dataset_digest,
+        evaluator=report.evaluator,
+        as_of=_AS_OF.isoformat(),
+        metrics=metrics,
+        rows=tuple(case.row() for case in cases),
+        cases=cases,
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Per-mode evaluation gate for E1. Two rubric sets, reported separately.",
@@ -660,6 +869,16 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Override the dataset. Only meaningful with a single --rubric.",
+    )
+    parser.add_argument(
+        "--emit",
+        type=Path,
+        default=None,
+        help=(
+            "Also write the per-conversation report artifact here. Optional on purpose: the "
+            "gate's contract is console output plus an exit status, and a reviewer's browsable "
+            "report is a separate job (see scripts/render_eval_report.py)."
+        ),
     )
     parser.add_argument(
         "--mode",
@@ -681,6 +900,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     ok = True
+    artifacts: list[report_artifact.EvalRunArtifact] = []
     for rubric in selected:
         dataset = args.dataset or DATASETS[rubric]
         if not dataset.exists():
@@ -697,6 +917,12 @@ def main(argv: list[str] | None = None) -> int:
             report = SMOKE[rubric](dataset)
             print_report(report, f"{rubric} offline rubric (no cloud creds)")
             ok = ok and report.passed
+            if args.emit is not None:
+                artifacts.append(_artifact(rubric, report))
+
+    if args.emit is not None:
+        written = report_artifact.write_artifact(artifacts, args.emit)
+        print(f"\nwrote {written}")
     return 0 if ok else 1
 
 
