@@ -107,6 +107,9 @@ MARKET = "SG"
 LOCALE = "en-SG"
 #: The line of business the shipped packs carry: they select on it with market.
 VERTICAL = "retail_banking"
+#: WHO the demo contact is about. `config/parties/records.jsonl` gives this party the
+#: card the maker-checker beat asks about, and gives a different card to somebody else.
+PARTY_REF = "party-sg-0001"
 
 #: A compliant agent-assist contact: the recording notice lands inside its window.
 COMPLIANT_CONTACT = "demo-contact-0001"
@@ -328,6 +331,7 @@ class DemoRun:
             audit_anchor_path=str(self.anchor_path),
             tenant=TENANT,
             kb_path=str(repo_root / "config" / "kb" / "passages.jsonl"),
+            parties_path=str(repo_root / "config" / "parties" / "records.jsonl"),
             streams_path=str(repo_root / "config" / "streams"),
             packs_path=str(repo_root / "config" / "packs"),
             packs=load_packs(repo_root / "config" / "packs"),
@@ -843,6 +847,7 @@ class DemoRun:
                 market=MARKET,
                 locale=LOCALE,
                 vertical=VERTICAL,
+                party_ref=PARTY_REF,
                 mode=mode,
             ),
             index=index,
@@ -1052,6 +1057,7 @@ def _escalated_result() -> models.AssistResult:
         market=MARKET,
         locale=LOCALE,
         vertical=VERTICAL,
+        party_ref=PARTY_REF,
         mode=ContactMode.AGENT_ASSIST,
     )
     now = utcnow()
@@ -1115,7 +1121,30 @@ def _exit_guardrail(container: Any) -> Any:
 
 
 def _exit_tool_catalog(container: Any) -> Any:
-    return container.tool_catalog.describe(CONSEQUENTIAL_ACTION)
+    return container.tool_catalog.describe(CONSEQUENTIAL_ACTION, VERTICAL)
+
+
+def _exit_voice_engine(container: Any) -> Any:
+    import asyncio
+
+    from contact_centre_conversations.ports.voice_engine import VoiceSessionConfig
+
+    contact = models.ContactRef(
+        contact_id=SELF_SERVICE_CONTACT,
+        tenant=TENANT,
+        market=MARKET,
+        locale=LOCALE,
+        vertical=VERTICAL,
+        party_ref=PARTY_REF,
+        mode=ContactMode.SELF_SERVICE,
+    )
+    return asyncio.run(container.voice_engine.connect(VoiceSessionConfig(contact=contact)))
+
+
+def _exit_party_records(container: Any) -> Any:
+    return container.party_records.owns(
+        party_ref=PARTY_REF, tenant=TENANT, parameter="card_last4", value="4321"
+    )
 
 
 def _exit_contact_store(container: Any) -> Any:
@@ -1161,6 +1190,7 @@ def _exit_channel(container: Any) -> Any:
             market=MARKET,
             locale=LOCALE,
             vertical=VERTICAL,
+            party_ref=PARTY_REF,
             mode=ContactMode.AGENT_ASSIST,
         )
     )
@@ -1185,6 +1215,8 @@ EXIT_CALLS: dict[str, Callable[[Any], Any]] = {
     "generation": _exit_generation,
     "guardrail": _exit_guardrail,
     "tool_catalog": _exit_tool_catalog,
+    "party_records": _exit_party_records,
+    "voice_engine": _exit_voice_engine,
     "contact_store": _exit_contact_store,
     "speech_to_text": _exit_speech,
     "text_to_speech": _exit_tts,
