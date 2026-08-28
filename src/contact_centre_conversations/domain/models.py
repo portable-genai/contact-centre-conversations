@@ -25,6 +25,9 @@ from .kernel import Citation, Severity
 from .modes import ContactMode
 
 __all__ = [
+    "AUDIENCE_PUBLIC",
+    "AUDIENCE_INTERNAL",
+    "AUDIENCES",
     "ActionCall",
     "ActionOutcome",
     "ActionSpec",
@@ -67,6 +70,16 @@ class ContactChannel(LenientStrEnum):
 
     VOICE = "voice"
     CHAT = "chat"
+
+
+#: Written for the customer: publishable wording a person may be told and could look up.
+AUDIENCE_PUBLIC = "public"
+#: Written for staff: handling rules, thresholds and internal procedure. Never quoted outward.
+#: It is the DEFAULT for a passage that does not say, because a corpus row nobody classified is
+#: the one to keep inside, and the loader refuses such a row anyway.
+AUDIENCE_INTERNAL = "internal"
+#: Every audience a passage may declare. An unknown value is a corpus error, not a third policy.
+AUDIENCES: tuple[str, ...] = (AUDIENCE_PUBLIC, AUDIENCE_INTERNAL)
 
 
 class GateOutcome(LenientStrEnum):
@@ -312,11 +325,18 @@ class RetrievalQuery:
 
 @dataclass(frozen=True, slots=True)
 class RetrievedPassage:
-    """Cited passages out. Every passage carries the citation a claim will be traced through."""
+    """Cited passages out. Every passage carries the citation a claim will be traced through.
+
+    ``audience`` says who the passage was written FOR. A knowledge base serving a contact centre
+    holds both halves: what a customer may be told, and how staff are meant to handle it. They
+    read alike and they are not alike, so which mode may ground a reply in which passage is a
+    property of the passage rather than a matter of phrasing the prompt carefully.
+    """
 
     text: str
     citation: Citation
     score: float = 0.0
+    audience: str = AUDIENCE_INTERNAL
 
 
 @dataclass(frozen=True, slots=True)

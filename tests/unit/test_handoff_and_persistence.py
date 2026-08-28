@@ -203,7 +203,11 @@ def test_the_offline_corpus_refuses_rather_than_answering_from_nothing(tmp_path:
     """An unreachable index reported as an empty result would look like a quiet knowledge base."""
     adapter = LocalFixtureRetrievalAdapter(local_settings(kb_path=""))
     with pytest.raises(RuntimeError, match="ground nothing"):
-        adapter.retrieve(suggestions.build_query("anything", market="SG", locale="en-SG"))
+        adapter.retrieve(
+            suggestions.build_query(
+                "anything", market="SG", locale="en-SG", mode=ContactMode.AGENT_ASSIST
+            )
+        )
 
 
 def test_a_suggestion_is_suppressed_when_retrieval_returns_nothing() -> None:

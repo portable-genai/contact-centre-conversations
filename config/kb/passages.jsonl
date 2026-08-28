@@ -1,9 +1,28 @@
 # Offline knowledge-base corpus (FICTIONAL). One JSON object per line. Fields: passage_id, title,
-# text, market, locale. The local retrieval adapter ranks by normalised term overlap and every
-# passage carries the citation a drafted reply is traced through. No real institution appears
-# here, and no figure in a suggested reply can exist unless it is in one of these lines.
-{"passage_id": "kb-sg-001", "title": "Card balance enquiries", "text": "An agent may state the current card balance after the caller has been verified. The balance quoted is the posted balance and excludes transactions still in authorisation.", "market": "SG", "locale": "en-SG"}
-{"passage_id": "kb-sg-002", "title": "Recent transaction listing", "text": "The last five posted transactions may be read out after verification. Pending authorisations are not read out because the merchant may still amend them.", "market": "SG", "locale": "en-SG"}
-{"passage_id": "kb-sg-003", "title": "Lost or stolen cards", "text": "A lost card is blocked immediately on the caller request and a replacement is despatched. The replacement arrives within 5 working days and the card number changes.", "market": "SG", "locale": "en-SG"}
-{"passage_id": "kb-sg-004", "title": "Disputed transactions", "text": "A disputed transaction is investigated and provisional credit may be applied while the investigation runs. The investigation takes up to 45 days and the caller keeps the right to dispute in writing.", "market": "SG", "locale": "en-SG"}
-{"passage_id": "kb-sg-005", "title": "Call recording and data use", "text": "Calls are recorded for quality and training. The caller is told at the start of the call and the information collected is used to service the account.", "market": "SG", "locale": "en-SG"}
+# text, market, locale, vertical, audience, source_ref. The local retrieval adapter ranks by
+# normalised term overlap and every passage carries the citation a drafted reply is traced
+# through. No real institution appears here, and no figure in a suggested reply can exist unless
+# it is in one of these lines.
+#
+# `audience` says who the passage was written FOR, and it is REQUIRED on every row. A contact
+# centre's corpus holds both halves: what a customer may be told ("public"), and how staff are
+# meant to handle it ("internal"). They read alike and they are not alike. Self-service may
+# ground a reply only in public rows; agent-assist may see both, because a trained employee is
+# meant to. An unclassified row is refused at load rather than filtered at query time, since a
+# filter cannot exclude on a field that is absent.
+#
+# `source_ref` is the published document a person could actually look up. A citation that
+# resolves only inside the bank is provenance for the bank, not for the person being told
+# something.
+#
+# kb-sg-002 used to carry both halves in one row: the publishable rule about which
+# transactions are listed, and the internal reason pending authorisations are withheld. As
+# one row it was staff wording sitting in the only pool a customer-facing reply could be
+# grounded in, which is exactly what the classification exists to separate.
+{"passage_id": "kb-sg-001", "title": "Card balance enquiries", "text": "The current card balance may be given once the caller has been verified. The balance quoted is the posted balance and excludes transactions still in authorisation.", "market": "SG", "locale": "en-SG", "vertical": "retail_banking", "audience": "public", "source_ref": "demo-bank.example/help/card-balance"}
+{"passage_id": "kb-sg-002", "title": "Recent transaction listing", "text": "The last five posted transactions may be read out after verification. Transactions still in authorisation are not listed until they post.", "market": "SG", "locale": "en-SG", "vertical": "retail_banking", "audience": "public", "source_ref": "demo-bank.example/help/recent-transactions"}
+{"passage_id": "kb-sg-003", "title": "Lost or stolen cards", "text": "A lost card is blocked immediately on the caller request and a replacement is despatched. The replacement arrives within 5 working days and the card number changes.", "market": "SG", "locale": "en-SG", "vertical": "retail_banking", "audience": "public", "source_ref": "demo-bank.example/help/lost-card"}
+{"passage_id": "kb-sg-004", "title": "Disputed transactions", "text": "A disputed transaction is investigated and provisional credit may be applied while the investigation runs. The investigation takes up to 45 days and the caller keeps the right to dispute in writing.", "market": "SG", "locale": "en-SG", "vertical": "retail_banking", "audience": "public", "source_ref": "demo-bank.example/help/disputed-transactions"}
+{"passage_id": "kb-sg-005", "title": "Call recording and data use", "text": "Calls are recorded for quality and training. The caller is told at the start of the call and the information collected is used to service the account.", "market": "SG", "locale": "en-SG", "vertical": "retail_banking", "audience": "public", "source_ref": "demo-bank.example/legal/call-recording"}
+{"passage_id": "kb-sg-006", "title": "Supervisor referral", "text": "A case is referred to a supervisor when two identity checks fail in one contact, or when the same caller reaches the centre three times within seven days. The referral note records which check failed.", "market": "SG", "locale": "en-SG", "vertical": "retail_banking", "audience": "internal", "source_ref": "ops-handbook/cards/supervisor-referral"}
+{"passage_id": "kb-sg-007", "title": "Conduct logging codes", "text": "A complaint is logged under its conduct code before the contact ends. The code names the product line rather than the outcome, so a later review can group cases by product.", "market": "SG", "locale": "en-SG", "vertical": "retail_banking", "audience": "internal", "source_ref": "ops-handbook/conduct/logging-codes"}

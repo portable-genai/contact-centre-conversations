@@ -23,7 +23,7 @@ from speech_lexicon_kit import normalise
 
 from ...config import Settings
 from ...domain.kernel import Citation
-from ...domain.models import RetrievalQuery, RetrievedPassage
+from ...domain.models import AUDIENCES, RetrievalQuery, RetrievedPassage
 
 #: Locale used to normalise the corpus and the query when the query names none.
 _FALLBACK_LOCALE = "en"
@@ -56,7 +56,32 @@ class LocalFixtureRetrievalAdapter:
                 f"knowledge-base corpus {self._path} is empty: an empty corpus is a broken "
                 "deployment, and returning no passages would look like a well-grounded silence"
             )
+        for row in rows:
+            self._check_classified(row)
         return rows
+
+    def _check_classified(self, row: dict[str, str]) -> None:
+        """Every passage must say who it was written for, and where to find it.
+
+        Refused at LOAD rather than filtered optimistically at query time. The filter treats a
+        key the row does not carry as excluding nothing, so an unclassified passage would match
+        a public-only query and be quoted to a customer: the very outcome the classification
+        exists to prevent. A corpus nobody classified must stop the deployment, not narrow it.
+        """
+        passage = row.get("passage_id", "(unnamed)")
+        audience = row.get("audience", "")
+        if audience not in AUDIENCES:
+            raise RuntimeError(
+                f"knowledge-base passage {passage!r} declares audience {audience!r}; it must be "
+                f"one of {list(AUDIENCES)}. A passage nobody classified would match a "
+                "customer-facing query, because a filter cannot exclude on a field that is absent."
+            )
+        if not row.get("source_ref", "").strip():
+            raise RuntimeError(
+                f"knowledge-base passage {passage!r} names no source_ref. A citation that "
+                "resolves only inside the bank is provenance for the bank, not for the person "
+                "being told something."
+            )
 
     @staticmethod
     def _terms(text: str, locale: str) -> set[str]:
@@ -80,8 +105,10 @@ class LocalFixtureRetrievalAdapter:
                     source_id=row["passage_id"],
                     title=row.get("title", row["passage_id"]),
                     snippet=row["text"][:120],
+                    source_ref=row["source_ref"],
                 ),
                 score=score,
+                audience=row["audience"],
             )
             scored.append((score, row["passage_id"], passage))
         # Sorted by score descending then id ascending: a stable order is what makes the

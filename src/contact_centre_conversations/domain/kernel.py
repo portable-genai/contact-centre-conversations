@@ -32,11 +32,19 @@ class Decision(LenientStrEnum):
 
 @dataclass(frozen=True, slots=True)
 class Citation:
-    """Provenance attached to a generated claim (source + optional locator)."""
+    """Provenance attached to a generated claim: the source, and where a reader can find it.
+
+    ``source_id`` is this deployment's internal handle for the passage. ``source_ref`` is the
+    published document a person could actually look up, which is the half a customer needs: a
+    citation that resolves only inside the bank is provenance for the bank, not for the person
+    being told something. It is empty only for provenance that names a pack rather than a
+    document, where the internal id IS the reference.
+    """
 
     source_id: str
     title: str
     snippet: str = ""
+    source_ref: str = ""
 
 
 @dataclass(frozen=True, slots=True)
