@@ -157,3 +157,6 @@ Named, rather than left to be discovered:
   grounding metrics currently measure the validator rather than a model's restraint. The judged
   half is where model quality is assessed, and it grades recorded text rather than a live call.
 - **HK and AU.** The PII patterns cover four jurisdictions and the scenarios exercise two.
+- **Agent assist beyond SG banking.** The whisper panel's scenarios cover one vertical in one
+  market; JP and the insurance vertical are exercised only on the customer-facing mode. The
+  packs and corpus for those combinations exist, so this is authoring work, not product work.
