@@ -54,4 +54,8 @@ jobs:
           pip install --no-deps -e .
 
       - name: Run eval smoke check
-        run: python eval/run_eval.py --mode smoke
+        run: |
+          python eval/run_eval.py --mode smoke
+          # The judged half. Offline by default, so it runs here with no model server and no
+          # credentials, exactly like the deterministic rubrics above.
+          python eval/run_narrative_eval.py

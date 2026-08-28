@@ -54,6 +54,7 @@ test-integration:
 
 eval:
 	python eval/run_eval.py
+	python eval/run_narrative_eval.py
 
 # The full OFFLINE gate. It is deliberately network-free, so it runs on a plane and in a
 # no-egress environment; the dependency audit needs a vulnerability feed and therefore lives in
