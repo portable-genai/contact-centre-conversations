@@ -24,8 +24,11 @@ that is asserted here too rather than assumed.
 
 from __future__ import annotations
 
+import dataclasses
+import hashlib
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +53,10 @@ from contact_centre_conversations.domain.suggestions import MAX_SUGGESTION_CHARS
 from contact_centre_conversations.services import build_services  # noqa: E402
 
 SCENARIOS = _REPO_ROOT / "eval" / "scenarios"
+
+#: The recording's clock, pinned to the SAME instant the eval scores at (``run_eval._AS_OF``),
+#: so the disclosure windows the model saw while being recorded are the ones the replay scores.
+_AS_OF = datetime(2026, 8, 8, 9, 0, tzinfo=UTC)
 
 
 class RecordingRefused(RuntimeError):
@@ -91,25 +98,31 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    # ``Settings`` is a frozen slots dataclass, so field-by-field copies go through
+    # ``dataclasses.replace`` rather than ``__dict__``, which a slots instance does not have.
     container = build_container(
-        Settings(**{**settings.__dict__, "modes": ModeGates.both_on()})
-        if not settings.modes.agent_assist.enabled
+        dataclasses.replace(settings, modes=ModeGates.both_on())
+        if not (settings.modes.agent_assist.enabled and settings.modes.self_service.enabled)
         else settings
     )
     built = build_services(container)
     generation = container.generation
+    # The REAL adapter's bound method, captured BEFORE the wrapper below is assigned over the
+    # instance attribute. The wrapper must call this, never ``generation.draft``, which after
+    # the assignment IS the wrapper and would recurse into itself instead of reaching a model.
+    real_draft = generation.draft
 
     captured: list[dict[str, Any]] = []
     planted: set[str] = set()
 
     def _capturing_draft(prompt: str, passages: Any, *, case_id: str) -> Any:
-        response = generation.draft(prompt, passages)
+        response = real_draft(prompt, passages)
         captured.append(
             {
                 "key": replay_generation.recording_key(settings.model, prompt, passages),
                 "case_id": case_id,
                 "model": settings.model,
-                "prompt_sha256": replay_generation.recording_key(settings.model, prompt, ()),
+                "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
                 "passage_ids": sorted(p.citation.source_id for p in passages),
                 "response": response,
             }
@@ -145,9 +158,9 @@ def main(argv: list[str] | None = None) -> int:
                     text=str(turn["text"]),
                 )
                 if contact_mode is ContactMode.AGENT_ASSIST:
-                    built.agent_assist.observe(submission, actor="recorder", as_of=None)  # type: ignore[arg-type]
+                    built.agent_assist.observe(submission, actor="recorder", as_of=_AS_OF)
                 else:
-                    built.self_service.handle(submission, actor="recorder", as_of=None)  # type: ignore[arg-type]
+                    built.self_service.handle(submission, actor="recorder", as_of=_AS_OF)
 
     if not captured:
         print("refused: nothing was captured, so there is nothing to record", file=sys.stderr)
