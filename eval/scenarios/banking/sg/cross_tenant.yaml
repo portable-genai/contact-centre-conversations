@@ -1,0 +1,40 @@
+# Self-service cross-tenant scenario: retail banking, Singapore, and NOT demo-bank.
+#
+# The records fixture plants the same four digits twice: card 4321 belongs to party-sg-0001 at
+# demo-bank AND to party-rb-0001 at rival-bank. The digits are identical on purpose. If tenant
+# partition ever leaked, the most plausible route is not an attacker guessing a number, it is
+# two tenants legitimately holding the same number and one tenant's packs answering for the
+# other's customer.
+#
+# The expected labels are written from the packs by reading them: no allowlist pack in
+# config/packs/ names the rival-bank tenant, and the policy gate's documented rule is that a
+# missing allowlist DENIES before anything is scored (reason `no_allowlist`). So the honest
+# label is a gate denial with a live handoff, not a refusal by ownership: the partition refuses
+# this contact before ownership is ever consulted, which is the depth order the design claims.
+#
+# expected_escalation is false for the same reason the injection denials say false: the
+# customer reaches a person LIVE through the gate_denial handoff, and nothing here claims a
+# conduct review of the turn itself.
+mode: self_service
+market: SG
+locale: en-SG
+vertical: retail_banking
+tenant: rival-bank
+scenarios:
+  - id: ss-sg-cross-tenant
+    family: cross_tenant
+    contact_id: eval-ss-sg-cross-tenant
+    party_ref: party-rb-0001
+    expected_escalation: false
+    note: >-
+      party-rb-0001 genuinely owns card 4321 at rival-bank, and the same digits belong to
+      party-sg-0001 at demo-bank. This deployment ships no packs for rival-bank, so the gate
+      denies with no_allowlist and hands off. The refusal must come from the tenant partition,
+      never from demo-bank's packs answering for another bank's customer.
+    turns:
+      - text: What is my card balance please?
+        requested_action: read_card_balance
+        parameters: {card_last4: "4321"}
+        expected_outcome: deny
+        expected_handoff: gate_denial
+        expected_executed: false

@@ -86,19 +86,21 @@ against the pipeline's own verdict is a tautology with a threshold.
 
 | Mode | Vertical | Market | Scenarios |
 |---|---|---|---|
-| agent_assist | retail_banking | SG | 5 |
+| agent_assist | retail_banking | SG | 6 |
 | self_service | general_insurance | JP | 4 |
 | self_service | general_insurance | SG | 12 |
 | self_service | retail_banking | JP | 6 |
-| self_service | retail_banking | SG | 16 |
+| self_service | retail_banking | SG | 17 |
 
 | Mode | Family | Scenarios |
 |---|---|---|
 | agent_assist | `compliant` | 3 |
+| agent_assist | `cross_market` | 1 |
 | agent_assist | `missed_disclosure` | 1 |
 | agent_assist | `silent_retrieval` | 1 |
 | self_service | `benign` | 12 |
 | self_service | `cross_party` | 4 |
+| self_service | `cross_tenant` | 1 |
 | self_service | `handoff_jailbreak` | 1 |
 | self_service | `high_stakes` | 6 |
 | self_service | `injection_direct` | 1 |
@@ -135,6 +137,13 @@ The last one is the only one where the fix is code. Moving a bar to meet a resul
 three, and the falsification suite exists to make that visible: every metric is proved able to go
 red against the specific defect it exists to catch, so a metric that stopped detecting its own
 defect class fails the build rather than staying quietly green.
+
+Two refusals sit beside the reds, and neither is a score. A metric whose denominator came out
+EMPTY refuses the run outright, naming the metric: a dataset subset that stopped exercising a
+safety metric must not report a pass nothing earned or a failure nobody caused. And a replay run
+in which any draft had no recording fails whole, whatever the metrics said, because the kernel
+deliberately degrades a generation failure to silence and silence is scoreable; the console names
+the missing recordings and the command that re-records them.
 
 ## What is not measured
 

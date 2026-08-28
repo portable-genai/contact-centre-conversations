@@ -52,9 +52,12 @@ test:
 test-integration:
 	pytest -m integration
 
+# $(PYRUN) like every other source-checkout target: bare `python` worked only after an editable
+# install with the right interpreter active, while `make eval-report` ran the SAME runner from
+# source. One target failing where its sibling passes is a support ticket, not a gate.
 eval:
-	python eval/run_eval.py
-	python eval/run_narrative_eval.py
+	$(PYRUN) eval/run_eval.py
+	$(PYRUN) eval/run_narrative_eval.py
 
 # The full OFFLINE gate. It is deliberately network-free, so it runs on a plane and in a
 # no-egress environment; the dependency audit needs a vulnerability feed and therefore lives in

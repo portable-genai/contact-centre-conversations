@@ -17,6 +17,13 @@ and it lives here rather than under ``tests/`` because the eval must not import 
 Fails closed in the one way that matters: a prompt with no recording RAISES, naming the case. It
 never falls back to the template drafter and it never reaches the network. A replay that quietly
 substituted a different drafter would report a score for a model that produced none of it.
+
+One subtlety keeps that honest end to end. The kernel treats ANY generation failure as silence,
+deliberately: for the product, a model outage must degrade to "no suggestion", never to an
+unvalidated fallback. That product property would swallow this adapter's raise, and silence is
+scoreable, so a stale recording would grade as a model that declined everything and pass
+wherever silence was the expected answer. So every miss is also recorded in :attr:`MISSES`, and
+``run_eval.py`` fails the whole replay run when the list is non-empty, whatever the metrics say.
 """
 
 from __future__ import annotations
@@ -25,7 +32,7 @@ import hashlib
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from contact_centre_conversations.config import Settings
 from contact_centre_conversations.domain.models import RetrievedPassage
@@ -47,6 +54,12 @@ def recording_key(model: str, prompt: str, passages: Sequence[RetrievedPassage])
 
 class ReplayGenerationAdapter:
     """Satisfies GenerationPort by replaying a recorded managed-model response."""
+
+    #: Every key that had no recording, across all instances of a run. Class-level because the
+    #: container constructs the instance and the runner never holds it; the runner clears this
+    #: before a replay run and fails the run if anything lands here, because the kernel converts
+    #: the raise below into silence and silence is scoreable. See the module docstring.
+    MISSES: ClassVar[list[str]] = []
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -76,8 +89,14 @@ class ReplayGenerationAdapter:
 
     def draft(self, prompt: str, passages: Sequence[RetrievedPassage]) -> Mapping[str, Any] | None:
         key = recording_key(self._settings.model, prompt, passages)
-        row = self._recordings().get(key)
+        try:
+            row = self._recordings().get(key)
+        except RuntimeError:
+            # An unreadable or empty fixture is a miss for every draft, not only for this key.
+            ReplayGenerationAdapter.MISSES.append(key)
+            raise
         if row is None:
+            ReplayGenerationAdapter.MISSES.append(key)
             raise RuntimeError(
                 f"no recorded model output for {key[:12]} (model {self._settings.model!r}). "
                 "The recording is out of date with the corpus or the prompt. Re-record rather "
