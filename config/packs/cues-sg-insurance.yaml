@@ -1,0 +1,24 @@
+# Cue pack: Singapore general insurance (FICTIONAL policy).
+#
+# The vulnerability list is insurance-shaped rather than banking-shaped, which is the point of
+# keying cues by vertical as well as market: a caller who has just lost a house to a flood and a
+# caller who cannot pay a card bill both need a person, and they do not say the same words.
+kind: cues
+pack_id: sg-insurance-cues-v1
+market: SG
+vertical: general_insurance
+locale: en-SG
+
+escalation:
+  - speak to a person
+  - speak to a human
+  - talk to someone
+  - put me through to an agent
+
+vulnerability:
+  - i cannot afford the premium
+  - i have lost my job
+  - our house was flooded
+  - we lost the house in the fire
+  - i have been scammed
+  - recently bereaved

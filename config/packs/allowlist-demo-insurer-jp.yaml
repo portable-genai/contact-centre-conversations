@@ -1,0 +1,70 @@
+# Allowlist pack: demo-insurer in Japan (FICTIONAL policy). Same taxonomy as the SG allowlist,
+# in Japanese: the intents a contact centre is asked about do not change with the language, and
+# the PHRASES that match them do.
+kind: allowlist
+tenant: demo-insurer
+market: JP
+vertical: general_insurance
+locale: ja-JP
+confidence_floor: 0.6
+
+intents:
+  - intent_id: policy_details
+    title: Tell the customer what their policy covers and for how long
+    phrases:
+      - 補償内容を教えてください
+      - 契約内容を確認したいです
+    actions: [read_policy_summary]
+  - intent_id: premium_due
+    title: Tell the customer their next premium instalment
+    phrases:
+      - 保険料の支払日はいつですか
+      - 次回の保険料はいくらですか
+    actions: [read_premium_schedule]
+  - intent_id: claim_status
+    title: Tell the customer where their claim has reached
+    phrases:
+      - 請求の状況を教えてください
+      - 保険金の進捗はどうなっていますか
+    actions: [read_claim_status]
+  - intent_id: excess_enquiry
+    title: Tell the customer the excess payable
+    phrases:
+      - 免責金額はいくらですか
+    actions: [read_excess]
+  - intent_id: policy_documents
+    title: Resend the policy documents
+    phrases:
+      - 保険証券を再送してください
+    actions: [send_policy_documents]
+
+  # The high-stakes half. Higher floor, and every action here is consequential.
+  - intent_id: lodge_claim
+    title: Lodge a first notification of loss
+    confidence_floor: 0.8
+    phrases:
+      - 保険金を請求したいです
+      - 事故の報告をしたいです
+    actions: [open_claim]
+  - intent_id: cancel_policy
+    title: Cancel the policy
+    confidence_floor: 0.8
+    phrases:
+      - 契約を解約したいです
+    actions: [cancel_policy]
+  - intent_id: renewal_decision
+    title: Accept the renewal terms
+    confidence_floor: 0.8
+    phrases:
+      - 契約を更新したいです
+    actions: [accept_renewal]
+
+actions:
+  - read_policy_summary
+  - read_premium_schedule
+  - read_claim_status
+  - read_excess
+  - send_policy_documents
+  - open_claim
+  - cancel_policy
+  - accept_renewal

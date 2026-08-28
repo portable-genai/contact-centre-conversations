@@ -82,6 +82,12 @@ class LocalFixtureRetrievalAdapter:
                 f"one of {list(AUDIENCES)}. A passage nobody classified would match a "
                 "customer-facing query, because a filter cannot exclude on a field that is absent."
             )
+        if not row.get("vertical", "").strip():
+            raise RuntimeError(
+                f"knowledge-base passage {passage!r} names no vertical. The filter cannot exclude "
+                "on a field that is absent, so an unclassified passage would answer for every "
+                "line of business at once: an insurer's wording quoted at a bank's customer."
+            )
         if not row.get("source_ref", "").strip():
             raise RuntimeError(
                 f"knowledge-base passage {passage!r} names no source_ref. A citation that "

@@ -1,0 +1,109 @@
+# Action catalog: general insurance (FICTIONAL policy). Scoped to its own vertical, so a banking
+# contact can never reach it even where an action id is spelled the same.
+#
+# `consequential` is the maker-checker line and it is REQUIRED on every entry: an action whose
+# catalog forgot to say is treated as consequential, and a silent default is how that gets
+# forgotten. A consequential action never auto-executes, whatever the gate decided.
+#
+# `binds_to_party` is the ownership line and it is REQUIRED on every parameter. A policy or
+# claim reference NAMES a record somebody owns, and a pattern proves only its shape: without the
+# ownership check, a well-formed reference is permission to read a stranger's policy.
+kind: actions
+catalog_id: general-insurance-actions-v1
+vertical: general_insurance
+
+actions:
+  # The everyday half: the queries a contact centre gets all day, none of them consequential.
+  - action_id: read_policy_summary
+    title: Read out the cover, sum insured and period
+    consequential: false
+    severity: low
+    parameters:
+      - name: policy_ref
+        kind: string
+        required: true
+        pattern: "POL-[A-Z]+-[0-9]{3}"
+        binds_to_party: true
+  - action_id: read_premium_schedule
+    title: Read out the next instalment and its date
+    consequential: false
+    severity: low
+    parameters:
+      - name: policy_ref
+        kind: string
+        required: true
+        pattern: "POL-[A-Z]+-[0-9]{3}"
+        binds_to_party: true
+  - action_id: read_claim_status
+    title: Read out where a claim has reached
+    consequential: false
+    severity: low
+    parameters:
+      - name: claim_ref
+        kind: string
+        required: true
+        pattern: "CLM-[0-9]{4}"
+        binds_to_party: true
+  - action_id: read_excess
+    title: Read out the excess payable on a cover category
+    consequential: false
+    severity: low
+    parameters:
+      - name: policy_ref
+        kind: string
+        required: true
+        pattern: "POL-[A-Z]+-[0-9]{3}"
+        binds_to_party: true
+  - action_id: read_no_claims_discount
+    title: Read out the no-claims discount standing
+    consequential: false
+    severity: low
+    parameters:
+      - name: policy_ref
+        kind: string
+        required: true
+        pattern: "POL-[A-Z]+-[0-9]{3}"
+        binds_to_party: true
+  - action_id: send_policy_documents
+    title: Resend the policy schedule and product disclosure sheet
+    consequential: false
+    severity: low
+    parameters:
+      - name: policy_ref
+        kind: string
+        required: true
+        pattern: "POL-[A-Z]+-[0-9]{3}"
+        binds_to_party: true
+
+  # The half that changes something. Every one of these is consequential: it starts an indemnity
+  # obligation, ends cover, or binds cover for a new period, and a person decides all three.
+  - action_id: open_claim
+    title: Lodge a first notification of loss
+    consequential: true
+    severity: critical
+    parameters:
+      - name: policy_ref
+        kind: string
+        required: true
+        pattern: "POL-[A-Z]+-[0-9]{3}"
+        binds_to_party: true
+  - action_id: cancel_policy
+    title: Cancel the policy
+    consequential: true
+    severity: critical
+    parameters:
+      - name: policy_ref
+        kind: string
+        required: true
+        pattern: "POL-[A-Z]+-[0-9]{3}"
+        binds_to_party: true
+  - action_id: accept_renewal
+    title: Accept the renewal terms and bind cover for a new period
+    consequential: true
+    severity: high
+    parameters:
+      - name: policy_ref
+        kind: string
+        required: true
+        pattern: "POL-[A-Z]+-[0-9]{3}"
+        binds_to_party: true

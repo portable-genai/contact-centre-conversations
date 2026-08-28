@@ -1,0 +1,47 @@
+# Allowlist pack: what self-service may HANDLE and, separately, what it may DO, for demo-bank
+# in Japan (FICTIONAL policy).
+#
+# TWO allowlists, deliberately separate. `intents` is what the assistant may HANDLE; `actions`
+# is what it may TAKE. Either being empty refuses everything. There is no wildcard and no way to
+# express one. The action catalog is shared with the SG allowlist because an action means the
+# same thing in both markets; the INTENT PHRASES are per market because language is.
+kind: allowlist
+tenant: demo-bank
+market: JP
+vertical: retail_banking
+locale: ja-JP
+confidence_floor: 0.6
+
+intents:
+  - intent_id: card_balance
+    title: Tell the customer their card balance
+    phrases:
+      - カードの残高を教えてください
+      - 残高はいくらですか
+    actions: [read_card_balance]
+  - intent_id: recent_transactions
+    title: Read out the recent transactions
+    phrases:
+      - 最近の利用明細
+      - 直近の取引を教えてください
+    actions: [read_recent_transactions]
+  - intent_id: report_lost_card
+    title: Take a lost-card report
+    confidence_floor: 0.8
+    phrases:
+      - カードを紛失しました
+      - カードが見当たりません
+    actions: [block_card]
+  - intent_id: dispute_transaction
+    title: Take a disputed transaction
+    confidence_floor: 0.8
+    phrases:
+      - 身に覚えのない取引があります
+      - 不正利用の疑いがあります
+    actions: [raise_chargeback]
+
+actions:
+  - read_card_balance
+  - read_recent_transactions
+  - block_card
+  - raise_chargeback

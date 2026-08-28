@@ -1,0 +1,17 @@
+# Cue pack: Japan general insurance (FICTIONAL policy).
+kind: cues
+pack_id: jp-insurance-cues-v1
+market: JP
+vertical: general_insurance
+locale: ja-JP
+
+escalation:
+  - 担当者と話したい
+  - 人と話したいです
+  - オペレーターにつないでください
+
+vulnerability:
+  - 保険料が払えません
+  - 失業しました
+  - 家が浸水しました
+  - 火事で家を失いました

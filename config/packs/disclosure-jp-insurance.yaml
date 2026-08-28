@@ -1,0 +1,50 @@
+# Disclosure pack: Japan general-insurance contact-centre disclosures (FICTIONAL policy).
+#
+# The regulator named in `jurisdiction` is real. The wording, the windows and the accepted
+# paraphrases are adopter-owned policy, invented for this fixture, and are not quotations.
+kind: disclosure
+pack_id: jp-insurance-disclosures-v1
+market: JP
+vertical: general_insurance
+jurisdiction: FSA
+locale: ja-JP
+
+disclosures:
+  - disclosure_id: recording_notice
+    required_phrase: この通話は録音されています
+    paraphrases:
+      - 通話を録音しております
+    trigger_event: contact_start
+    within_ms: 45000
+    severity: high
+    reminder: Give the call-recording notice now; the window closes 45 seconds in.
+    role: agent
+  - disclosure_id: data_use_notice
+    required_phrase: お客様の情報は
+    paraphrases:
+      - お客様の個人情報は
+    trigger_event: procedure_state:verify_identity
+    within_ms: 60000
+    severity: medium
+    reminder: State the purpose of the personal data you are about to collect.
+    role: agent
+  # CRITICAL for the same reason as the SG pack: naming the cover without naming what is
+  # excluded is how a policy gets mis-sold.
+  - disclosure_id: exclusions_notice
+    required_phrase: 補償対象外となる場合
+    paraphrases:
+      - 免責事項について
+    trigger_event: lexicon:cover_confirmed
+    within_ms: 120000
+    severity: critical
+    reminder: Explain the significant exclusions before the caller relies on the cover.
+    role: agent
+  - disclosure_id: complaints_route_notice
+    required_phrase: 苦情のお申し出は
+    paraphrases:
+      - 相談窓口にご連絡いただけます
+    trigger_event: lexicon:next_steps_explained
+    within_ms: 120000
+    severity: high
+    reminder: Give the complaints route before closing the contact.
+    role: agent

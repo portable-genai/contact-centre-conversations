@@ -32,6 +32,7 @@ from contact_centre_conversations.domain.modes import ContactMode
 from tests.conftest import local_settings
 
 _INTERNAL_PASSAGE = "kb-sg-006"
+_V = "retail_banking"
 
 
 def _passage(audience: str, passage_id: str = "kb-sg-001") -> RetrievedPassage:
@@ -49,7 +50,7 @@ def _draft(passage_id: str = "kb-sg-001") -> dict[str, object]:
 # ------------------------------------------------------------------ the retrieval filter
 def test_a_customer_facing_query_asks_only_for_public_passages() -> None:
     query = suggestions.build_query(
-        "balance", market="SG", locale="en-SG", mode=ContactMode.SELF_SERVICE
+        "balance", market="SG", locale="en-SG", vertical=_V, mode=ContactMode.SELF_SERVICE
     )
     assert query.filters["audience"] == AUDIENCE_PUBLIC
 
@@ -61,7 +62,7 @@ def test_an_agent_facing_query_sets_no_audience_filter_at_all() -> None:
     being one, which is worse than not setting it: a reader would stop asking.
     """
     query = suggestions.build_query(
-        "balance", market="SG", locale="en-SG", mode=ContactMode.AGENT_ASSIST
+        "balance", market="SG", locale="en-SG", vertical=_V, mode=ContactMode.AGENT_ASSIST
     )
     assert "audience" not in query.filters
 
@@ -72,6 +73,7 @@ def test_the_corpus_never_returns_an_internal_passage_to_a_customer() -> None:
         "supervisor referral identity checks fail",
         market="SG",
         locale="en-SG",
+        vertical="retail_banking",
         mode=ContactMode.SELF_SERVICE,
     )
     assert all(passage.audience == AUDIENCE_PUBLIC for passage in adapter.retrieve(query))
@@ -84,6 +86,7 @@ def test_the_same_query_does_reach_that_passage_for_an_agent() -> None:
         "supervisor referral identity checks fail",
         market="SG",
         locale="en-SG",
+        vertical="retail_banking",
         mode=ContactMode.AGENT_ASSIST,
     )
     returned = {passage.citation.source_id for passage in adapter.retrieve(query)}
@@ -127,7 +130,11 @@ def test_one_internal_passage_among_several_discards_the_whole_draft() -> None:
 def test_every_shipped_passage_is_classified_and_resolvable() -> None:
     adapter = build_container(local_settings()).retrieval
     query = suggestions.build_query(
-        "card balance transactions", market="SG", locale="en-SG", mode=ContactMode.AGENT_ASSIST
+        "card balance transactions",
+        market="SG",
+        locale="en-SG",
+        vertical=_V,
+        mode=ContactMode.AGENT_ASSIST,
     )
     passages = adapter.retrieve(query)
     assert passages
@@ -145,14 +152,14 @@ def test_an_unclassified_passage_is_refused_at_load(tmp_path) -> None:
     corpus = tmp_path / "passages.jsonl"
     corpus.write_text(
         '{"passage_id": "kb-x-001", "title": "T", "text": "A rule.", "market": "SG", '
-        '"locale": "en-SG", "source_ref": "ref"}\n',
+        '"locale": "en-SG", "vertical": "retail_banking", "source_ref": "ref"}\n',
         encoding="utf-8",
     )
     adapter = build_container(local_settings(kb_path=str(corpus))).retrieval
     with pytest.raises(RuntimeError, match="declares audience"):
         adapter.retrieve(
             suggestions.build_query(
-                "rule", market="SG", locale="en-SG", mode=ContactMode.SELF_SERVICE
+                "rule", market="SG", locale="en-SG", vertical=_V, mode=ContactMode.SELF_SERVICE
             )
         )
 
@@ -161,14 +168,14 @@ def test_a_passage_with_no_source_ref_is_refused_at_load(tmp_path) -> None:
     corpus = tmp_path / "passages.jsonl"
     corpus.write_text(
         '{"passage_id": "kb-x-001", "title": "T", "text": "A rule.", "market": "SG", '
-        '"locale": "en-SG", "audience": "public"}\n',
+        '"locale": "en-SG", "vertical": "retail_banking", "audience": "public"}\n',
         encoding="utf-8",
     )
     adapter = build_container(local_settings(kb_path=str(corpus))).retrieval
     with pytest.raises(RuntimeError, match="names no source_ref"):
         adapter.retrieve(
             suggestions.build_query(
-                "rule", market="SG", locale="en-SG", mode=ContactMode.SELF_SERVICE
+                "rule", market="SG", locale="en-SG", vertical=_V, mode=ContactMode.SELF_SERVICE
             )
         )
 
@@ -198,10 +205,15 @@ def test_a_reclassified_passage_stops_reaching_customers(tmp_path) -> None:
     """The corpus is data: flipping a row to internal must change what a customer can be told."""
     row = (
         '{{"passage_id": "kb-x-001", "title": "Fees", "text": "A monthly fee applies.", '
-        '"market": "SG", "locale": "en-SG", "audience": "{audience}", "source_ref": "ref"}}\n'
+        '"market": "SG", "locale": "en-SG", "vertical": "retail_banking", '
+        '"audience": "{audience}", "source_ref": "ref"}}\n'
     )
     query = suggestions.build_query(
-        "monthly fee applies", market="SG", locale="en-SG", mode=ContactMode.SELF_SERVICE
+        "monthly fee applies",
+        market="SG",
+        locale="en-SG",
+        vertical=_V,
+        mode=ContactMode.SELF_SERVICE,
     )
 
     public = tmp_path / "public.jsonl"
@@ -233,7 +245,8 @@ def test_a_japanese_query_can_rank_a_japanese_passage(tmp_path) -> None:
         '{"passage_id": "kb-jp-001", "title": "紛失カード", '
         '"text": "紛失したカードは直ちに'
         '利用停止となります。", '
-        '"market": "JP", "locale": "ja-JP", "audience": "public", "source_ref": "ref"}\n',
+        '"market": "JP", "locale": "ja-JP", "vertical": "retail_banking", '
+        '"audience": "public", "source_ref": "ref"}\n',
         encoding="utf-8",
     )
     adapter = build_container(local_settings(kb_path=str(corpus))).retrieval
@@ -241,6 +254,7 @@ def test_a_japanese_query_can_rank_a_japanese_passage(tmp_path) -> None:
         "カードを紛失しました",
         market="JP",
         locale="ja-JP",
+        vertical="retail_banking",
         mode=ContactMode.SELF_SERVICE,
     )
     assert [p.citation.source_id for p in adapter.retrieve(query)] == ["kb-jp-001"]

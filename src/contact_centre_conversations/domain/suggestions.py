@@ -69,20 +69,28 @@ def passage_id(passage: RetrievedPassage) -> str:
 
 
 def build_query(
-    text: str, *, market: str, locale: str, mode: ContactMode, top_k: int = 5
+    text: str,
+    *,
+    market: str,
+    locale: str,
+    vertical: str,
+    mode: ContactMode,
+    top_k: int = 5,
 ) -> RetrievalQuery:
     """The governed-RAG query for one redacted customer turn.
 
-    Market, locale and audience are FILTERS rather than prompt text, so a knowledge base that
-    partitions by jurisdiction or by who a passage was written for can enforce the partition
-    itself instead of trusting a phrasing.
+    Market, locale, vertical and audience are FILTERS rather than prompt text, so a knowledge
+    base that partitions by jurisdiction, by line of business, or by who a passage was written
+    for can enforce the partition itself instead of trusting a phrasing. The vertical matters
+    for the same reason the packs are keyed by it: an insurer's policy wording and a bank's are
+    different reviewed corpora, and a term they happen to share is not a reason to cross them.
 
     The audience filter is set only where it NARROWS: a customer-facing turn asks for public
     passages, and an agent-assist turn asks for no audience at all because it may see both. A
     filter naming every permitted value would be a filter that excludes nothing while looking
     like a control.
     """
-    filters = {"market": market, "locale": locale}
+    filters = {"market": market, "locale": locale, "vertical": vertical}
     permitted = AUDIENCES_FOR_MODE[mode]
     if len(permitted) == 1:
         filters["audience"] = next(iter(permitted))

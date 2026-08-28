@@ -1,0 +1,74 @@
+# Procedure pack: a disputed card transaction, Japan retail bank (FICTIONAL policy).
+#
+# The same procedure as the SG pack, in Japanese, because the phrase evidence is what the engine
+# walks and phrases do not translate by being restated in English. `speech_lexicon_kit.normalise`
+# folds kana for the ja-JP locale, so hiragana and katakana spellings of one phrase match.
+kind: procedure
+pack_id: jp-card-dispute-v1
+market: JP
+vertical: retail_banking
+locale: ja-JP
+initial_state: greeting
+
+lexicon:
+  - entry_id: greeting_given
+    phrases:
+      - お電話ありがとうございます
+      - 本日はどのようなご用件でしょうか
+  - entry_id: identity_verified
+    phrases:
+      - 生年月日をご確認ください
+      - カード番号の下四桁
+  - entry_id: dispute_details_taken
+    phrases:
+      - どちらの加盟店でしょうか
+      - お取引の金額
+      - いつお気づきになりましたか
+  - entry_id: card_blocked
+    phrases:
+      - カードを利用停止にしました
+      - カードの利用を停止いたします
+  - entry_id: outcome_explained
+    phrases:
+      - 仮入金
+      - 代替カードをお送りします
+      - 調査には最大
+
+states:
+  - state_id: greeting
+    title: Open the contact
+    instruction: Greet the caller and ask how you can help today.
+    exit_criteria: [greeting_given]
+    required_evidence: [greeting_given]
+    transitions: [verify_identity]
+    role: agent
+  - state_id: verify_identity
+    title: Verify the caller
+    instruction: >-
+      Verify the caller before discussing any account detail, taking date of birth and the last
+      four digits of the card.
+    exit_criteria: [identity_verified]
+    required_evidence: [identity_verified]
+    transitions: [take_dispute]
+    role: agent
+  - state_id: take_dispute
+    title: Take the dispute detail
+    instruction: Ask when the transaction was noticed, which merchant, and the amount.
+    exit_criteria: [dispute_details_taken]
+    required_evidence: [dispute_details_taken]
+    transitions: [block_card]
+    role: agent
+  - state_id: block_card
+    title: Block the card
+    instruction: Block the card and tell the caller you have done it.
+    exit_criteria: [card_blocked]
+    required_evidence: [card_blocked]
+    transitions: [explain_outcome]
+    role: agent
+  - state_id: explain_outcome
+    title: Explain what happens next
+    instruction: Explain provisional credit, the replacement card and the investigation window.
+    exit_criteria: [outcome_explained]
+    required_evidence: [outcome_explained]
+    transitions: []
+    role: agent

@@ -23,6 +23,8 @@ import pytest
 
 from contact_centre_conversations.domain.packs import PackError, PackLibrary
 
+from tests import REPO_ROOT as _REPO_ROOT
+
 _BANKING = "retail_banking"
 _INSURANCE = "general_insurance"
 
@@ -144,3 +146,97 @@ def test_an_allowlist_may_not_name_an_action_from_another_verticals_catalog() ->
                 },
             ]
         )
+
+
+# ------------------------------------------------------------------ the shipped 2x2 matrix
+def _shipped() -> PackLibrary:
+    from contact_centre_conversations.config import load_packs
+
+    return load_packs(_REPO_ROOT / "config" / "packs")
+
+
+_COMBINATIONS = [
+    ("SG", _BANKING, "demo-bank"),
+    ("JP", _BANKING, "demo-bank"),
+    ("SG", _INSURANCE, "demo-insurer"),
+    ("JP", _INSURANCE, "demo-insurer"),
+]
+
+
+@pytest.mark.parametrize(("market", "vertical", "tenant"), _COMBINATIONS)
+def test_every_shipped_combination_has_a_complete_pack_set(
+    market: str, vertical: str, tenant: str
+) -> None:
+    """A combination missing one pack kind fails at RUNTIME, on a real contact, not at load.
+
+    `assist_service` raises without a procedure and `_disclosures` raises without a disclosure
+    pack, so a half-configured combination is a contact that reaches a customer and then throws.
+    Asserting the set here turns that into a build failure.
+    """
+    packs = _shipped()
+    assert packs.procedure_for(market, vertical) is not None, "no procedure pack"
+    assert packs.disclosure_for(market, vertical) is not None, "no disclosure pack"
+    assert packs.cues_for(market, vertical) is not None, "no cue pack"
+    assert packs.allowlist_for(tenant, market, vertical) is not None, "no allowlist"
+
+
+@pytest.mark.parametrize(("market", "vertical", "tenant"), _COMBINATIONS)
+def test_every_allowlisted_action_exists_in_that_verticals_catalog(
+    market: str, vertical: str, tenant: str
+) -> None:
+    packs = _shipped()
+    allowlist = packs.allowlist_for(tenant, market, vertical)
+    assert allowlist is not None and allowlist.allowed_actions
+    for action_id in allowlist.allowed_actions:
+        assert packs.action_spec(action_id, vertical) is not None
+
+
+def test_an_insurer_cannot_reach_a_banking_action_and_the_reverse() -> None:
+    """The partition, stated on the actions themselves rather than only on the pack lookup."""
+    packs = _shipped()
+    assert packs.action_spec("block_card", _BANKING) is not None
+    assert packs.action_spec("block_card", _INSURANCE) is None
+    assert packs.action_spec("open_claim", _INSURANCE) is not None
+    assert packs.action_spec("open_claim", _BANKING) is None
+
+
+def test_the_high_stakes_insurance_intents_carry_a_higher_floor_and_consequential_actions() -> None:
+    """The taxonomy's whole point: the queries a company most needs to get right are gated harder.
+
+    Lodging a claim starts an indemnity obligation, cancelling ends cover and accepting a
+    renewal binds a new period. None may auto-execute, and none may match on a weak phrase hit.
+    """
+    packs = _shipped()
+    allowlist = packs.allowlist_for("demo-insurer", "SG", _INSURANCE)
+    assert allowlist is not None
+    for intent_id in ("lodge_claim", "cancel_policy", "renewal_decision"):
+        intent = allowlist.intent(intent_id)
+        assert intent is not None, f"{intent_id} is not allowlisted"
+        assert intent.confidence_floor > allowlist.default_confidence_floor
+        for action_id in intent.actions:
+            spec = packs.action_spec(action_id, _INSURANCE)
+            assert spec is not None and spec.consequential, f"{action_id} is not consequential"
+
+
+def test_the_everyday_insurance_intents_can_actually_be_resolved() -> None:
+    """Or the vertical is all refusals and containment is zero by construction."""
+    packs = _shipped()
+    allowlist = packs.allowlist_for("demo-insurer", "SG", _INSURANCE)
+    assert allowlist is not None
+    for intent_id in ("policy_details", "premium_due", "claim_status", "excess_enquiry"):
+        intent = allowlist.intent(intent_id)
+        assert intent is not None and intent.actions
+        for action_id in intent.actions:
+            spec = packs.action_spec(action_id, _INSURANCE)
+            assert spec is not None and not spec.consequential
+
+
+def test_every_insurance_record_parameter_binds_to_the_party_that_owns_it() -> None:
+    """A policy or claim reference NAMES a record. A pattern proves only its shape."""
+    packs = _shipped()
+    for action_id in packs.action_ids_for(_INSURANCE):
+        spec = packs.action_spec(action_id, _INSURANCE)
+        assert spec is not None
+        for parameter in spec.parameters:
+            if parameter.name in {"policy_ref", "claim_ref"}:
+                assert parameter.binds_to_party, f"{action_id}.{parameter.name} is unbound"

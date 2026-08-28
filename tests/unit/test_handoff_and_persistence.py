@@ -205,7 +205,11 @@ def test_the_offline_corpus_refuses_rather_than_answering_from_nothing(tmp_path:
     with pytest.raises(RuntimeError, match="ground nothing"):
         adapter.retrieve(
             suggestions.build_query(
-                "anything", market="SG", locale="en-SG", mode=ContactMode.AGENT_ASSIST
+                "anything",
+                market="SG",
+                locale="en-SG",
+                vertical=sample_cases.VERTICAL,
+                mode=ContactMode.AGENT_ASSIST,
             )
         )
 

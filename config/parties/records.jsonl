@@ -17,3 +17,13 @@
 {"party_ref": "party-sg-0002", "tenant": "demo-bank", "parameter": "card_last4", "value": "9876"}
 {"party_ref": "party-sg-0002", "tenant": "demo-bank", "parameter": "transaction_ref", "value": "TXN-000043"}
 {"party_ref": "party-rb-0001", "tenant": "rival-bank", "parameter": "card_last4", "value": "4321"}
+# Insurance parties. `demo-insurer` is a different tenant from `demo-bank`, and within it
+# `party-si-0001` and `party-si-0002` are again two customers who share everything except
+# who owns what. The JP pair mirrors them so the ownership check is exercised in both markets.
+{"party_ref": "party-si-0001", "tenant": "demo-insurer", "parameter": "policy_ref", "value": "POL-MOTOR-052"}
+{"party_ref": "party-si-0001", "tenant": "demo-insurer", "parameter": "claim_ref", "value": "CLM-1001"}
+{"party_ref": "party-si-0002", "tenant": "demo-insurer", "parameter": "policy_ref", "value": "POL-MOTOR-088"}
+{"party_ref": "party-si-0002", "tenant": "demo-insurer", "parameter": "claim_ref", "value": "CLM-1002"}
+{"party_ref": "party-ji-0001", "tenant": "demo-insurer", "parameter": "policy_ref", "value": "POL-MOTOR-201"}
+{"party_ref": "party-ji-0001", "tenant": "demo-insurer", "parameter": "claim_ref", "value": "CLM-2001"}
+{"party_ref": "party-jp-0001", "tenant": "demo-bank", "parameter": "card_last4", "value": "5566"}
