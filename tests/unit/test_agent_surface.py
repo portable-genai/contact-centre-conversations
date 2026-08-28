@@ -13,6 +13,8 @@ Three failures this suite exists to prevent, all of which a scaffolded surface i
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -80,7 +82,6 @@ def test_the_agent_path_routes_an_escalation_rather_than_only_flagging_it() -> N
         result = whisper_panel(
             sample_cases.MISSED_DISCLOSURE_CONTACT_ID,
             text,
-            tenant=sample_cases.TENANT,
             index=index,
             start_ms=start_ms,
             end_ms=end_ms,
@@ -96,7 +97,6 @@ def test_the_agent_path_does_not_manufacture_a_review_for_a_compliant_turn() -> 
     result = whisper_panel(
         sample_cases.CLEAN_CONTACT_ID,
         "Thank you for calling. This call is being recorded for quality.",
-        tenant=sample_cases.TENANT,
         settings=local_settings(),
     )
     assert result["requires_human_review"] is False
@@ -107,7 +107,6 @@ def test_the_self_service_tool_denies_an_out_of_scope_ask_and_hands_off() -> Non
     result = self_service_reply(
         sample_cases.SELF_SERVICE_CONTACT_ID,
         "Please refinance my mortgage and tell me which fund to buy.",
-        tenant=sample_cases.TENANT,
         settings=local_settings(),
     )
     assert result["verdict"]["outcome"] == "deny"
@@ -123,7 +122,6 @@ def test_the_tool_output_is_masked_before_it_can_reach_a_model() -> None:
     result = whisper_panel(
         sample_cases.CLEAN_CONTACT_ID,
         f"The caller quoted NRIC {sample_cases.PLANTED_NRIC} on the line.",
-        tenant=sample_cases.TENANT,
         settings=local_settings(),
     )
     assert sample_cases.PLANTED_NRIC not in repr(result)
@@ -149,3 +147,28 @@ def test_the_tools_import_and_run_with_no_agent_runtime_installed(no_cloud_sdk: 
     assert build_agent_card(local_settings()).skills
     with pytest.raises(ModuleNotFoundError):
         tools.build_function_tools()
+
+
+def test_the_tool_surface_takes_no_tenant_from_its_caller() -> None:
+    """These functions are on the A2A agent card, so a tenant argument is a MODEL choosing one.
+
+    The API path has said so since it was written ("the tenant comes from the principal, never
+    from the body"). This surface used to take `tenant` as a parameter defaulting to a real
+    tenant id, which is the same defect with a friendlier spelling: a caller who names the
+    partition names whose contacts get read, and the store only refuses a MISMATCH.
+    """
+    for tool in (whisper_panel, self_service_reply):
+        assert "tenant" not in inspect.signature(tool).parameters, (
+            f"{tool.__name__} accepts a caller-supplied tenant"
+        )
+
+
+def test_a_tool_refuses_when_no_tenant_partition_is_configured() -> None:
+    """Refusing beats inventing one: a tool that picked a partition reads somebody by accident."""
+    settings = local_settings(tenant="")
+    with pytest.raises(ValueError, match="no tenant partition is configured"):
+        whisper_panel(
+            contact_id=sample_cases.CLEAN_CONTACT_ID,
+            text="Thank you for calling.",
+            settings=settings,
+        )

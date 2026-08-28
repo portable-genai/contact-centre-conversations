@@ -28,7 +28,14 @@ from ..ports.observability import ObservabilityTracerPort
 from ..ports.party_records import PartyRecordsPort
 from ..ports.review_router import ReviewRouterPort
 from ..ports.tool_catalog import ToolCatalogPort
-from . import action_engine, disclosure_engine, handoff, intent_engine, policy_gate
+from . import (
+    action_engine,
+    disclosure_engine,
+    escalation,
+    handoff,
+    intent_engine,
+    policy_gate,
+)
 from .contact_kernel import ContactKernel
 from .guardrails import degradation_for
 from .kernel import Citation, Decision, Severity
@@ -210,10 +217,10 @@ class SelfServiceService:
                 else None
             )
 
-            requires_review = bool(
-                disclosures.requires_human_review
-                or (action is not None and action.requires_human_review)
+            escalations = escalation.reasons_for(
+                degradation=degradation, disclosures=disclosures, action=action
             )
+            requires_review = bool(escalations)
 
             result = SelfServiceResult(
                 contact=contact,

@@ -140,6 +140,27 @@ Hexagonal, ports and adapters:
   all route in the same call that produced the result. `tests/unit/test_review_routing.py` is the
   standing gate; a local router that silently did nothing would let a producer ship R8 unwired
   and green.
+- **What must escalate is ONE table, not one expression per mode.** `domain/escalation.py`
+  names every condition that has to reach a human, and both mode services call it. Two
+  expressions of one rule is how the two came to disagree: self-service left
+  `degradation.review` out, so a guardrail-blocked turn escalated to nobody in the
+  CUSTOMER-FACING mode while the identical event routed correctly in agent-assist. The standing
+  property in `tests/unit/test_escalation_table.py` is an inequality, not an equality: the modes
+  may differ, and self-service must never be the laxer one.
+- **The tenant partition is configuration on EVERY surface, never a caller's argument.** The API
+  takes it from the verified principal; `cli/main.py` and `agent/tools.py` take it from settings
+  and refuse when none is configured. The tool functions are published on the A2A agent card, so
+  a `tenant` parameter there is a MODEL choosing which partition to read, and the store only ever
+  refused a MISMATCH. `tests/unit/test_agent_surface.py` asserts the signatures carry no tenant.
+- **A parameter that names somebody's record is checked against who is asking.** A pattern proves
+  shape and nothing else, and tenant partition cannot separate two customers of one bank. Every
+  parameter the catalog marks `binds_to_party` is resolved through `PartyRecordsPort` before
+  `action_engine` will execute anything, an unidentified party owns nothing, and an adapter that
+  cannot answer raises rather than returning False.
+- **A customer-facing reply quotes only what the bank has published.** Knowledge-base passages
+  declare `audience`, required at load because the retrieval filter cannot exclude on a field a
+  row does not carry. Self-service retrieves public passages only; `validate_draft` checks again
+  and discards whole, which catches a retrieval implementation that ignored the filter.
 - **The consequential decision is deterministic.** The severity band and the escalation come from
   pure stdlib code and are replayable. An LLM may narrate the result; it may never produce the
   band.

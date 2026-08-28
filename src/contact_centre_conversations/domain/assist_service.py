@@ -27,7 +27,7 @@ from speech_lexicon_kit import Transcript, find_hits
 
 from ..ports.observability import ObservabilityTracerPort
 from ..ports.review_router import ReviewRouterPort
-from . import disclosure_engine, procedure_engine
+from . import disclosure_engine, escalation, procedure_engine
 from .contact_kernel import ContactKernel
 from .guardrails import degradation_for
 from .kernel import Citation, Decision, Severity
@@ -112,7 +112,8 @@ class AgentAssistService:
                 allow_model=degradation.allow_model,
             )
 
-            requires_review = disclosures.requires_human_review or degradation.review
+            escalations = escalation.reasons_for(degradation=degradation, disclosures=disclosures)
+            requires_review = bool(escalations)
             severity = _severity(disclosures)
             citations: list[Citation] = [*next_step.citations]
             for status in disclosures.missed:
