@@ -172,10 +172,24 @@ def test_the_pii_metric_goes_red_when_redaction_is_removed(tmp_path: Path) -> No
 def _wildcard_settings() -> Settings:
     """An allowlist that admits everything, which the shipped pack schema cannot express.
 
-    The wildcard is a phrase that matches every utterance, plus every action reachable from it.
+    The wildcard intent's phrase list is EVERY UTTERANCE IN THE GOLDEN SET, verbatim, so every
+    turn matches its own text at full strength. Built that way rather than from a supposedly
+    universal fragment: an earlier version used the single letter "e" and went red for the
+    WRONG reason, because the lexicon matches whole words and a bare letter matches nothing, so
+    the "wildcard" was actually a refuse-everything mutant and gate precision failed on denials
+    rather than on admissions. Deriving the phrases from the dataset is the only construction
+    that cannot rot as the matcher or the scenarios change.
+
     Building it here rather than in ``config/packs/`` is the point: this is the mutant, and it
     must not be something a deployment could accidentally ship.
     """
+    utterances = list(
+        dict.fromkeys(
+            turn["text"]
+            for case in run_eval.load_scenarios(run_eval.SCENARIOS, _SS)
+            for turn in case["turns"]
+        )
+    )
     wildcard = PackLibrary.from_documents(
         [
             {
@@ -238,8 +252,9 @@ def _wildcard_settings() -> Settings:
                         "intent_id": "anything",
                         "title": "The wildcard: matches every utterance",
                         "confidence_floor": 0.0,
-                        # A single letter every English sentence in the golden set contains.
-                        "phrases": ["e"],
+                        # Every golden utterance verbatim: see the docstring for why nothing
+                        # shorter can be trusted to keep matching.
+                        "phrases": utterances,
                         "actions": [
                             "read_card_balance",
                             "read_recent_transactions",
@@ -464,6 +479,152 @@ def test_customer_pii_safety_goes_red_when_a_planted_token_survives(tmp_path: Pa
         threshold=run_eval.THRESHOLDS[_SS]["customer_pii_safety"],
         metric="customer_pii_safety",
     )
+
+
+def test_containment_goes_red_when_ordinary_demand_stops_resolving(tmp_path: Path) -> None:
+    """The red input reclassifies which conversations the reviewer calls ordinary demand.
+
+    Containment is the one business KPI here: the fraction of NON-adversarial contacts resolved
+    with no person involved. Its defect class is ordinary demand quietly ceasing to resolve, and
+    from the metric's point of view that is indistinguishable from the family labels moving the
+    denials into the ordinary column, so that is the mutation: the contacts that hand off or
+    deny become the measured population, and the score collapses through the floor.
+    """
+    green = run_eval.DATASETS[_SS]
+    swap = {"benign": "out_of_scope", "out_of_scope": "benign", "cross_party": "high_stakes"}
+
+    def _reclassify(document: dict[str, Any]) -> None:
+        for case in _scenarios(document, _SS):
+            case["family"] = swap.get(case["family"], case["family"])
+
+    red = _mutated(tmp_path, "ss-containment", _reclassify)
+    assert_each_can_go_red(
+        _score(_SS, "containment"),
+        {"self_service": ((green, None), (red, None))},
+        threshold=run_eval.THRESHOLDS[_SS]["containment"],
+        metric="containment",
+    )
+
+
+def test_citation_audience_goes_red_when_the_market_partition_is_removed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The defect is the retrieval partition, which is what this metric exists to watch.
+
+    The `cross_market` scenario (aa-6) asks a card-balance question in the JP corpus's own
+    words on an SG contact, so with the market and vertical filters stripped from the retrieval
+    query the JP passage out-ranks everything and is cited. The metric must then go red against
+    the corpus file's own market column: a citation from another jurisdiction's corpus is
+    exactly the cross-partition disclosure the audience rule forbids.
+    """
+    metric = "citation_audience_accuracy"
+    green = _score_once(_AA, metric)
+    assert green >= run_eval.THRESHOLDS[_AA][metric], "the clean corpus should pass"
+
+    original = suggestions.build_query
+
+    def _unpartitioned(
+        text: str, *, market: str, locale: str, vertical: str, mode: Any, top_k: int = 5
+    ) -> Any:
+        query = original(
+            text, market=market, locale=locale, vertical=vertical, mode=mode, top_k=top_k
+        )
+        filters = {
+            key: value
+            for key, value in query.filters.items()
+            if key not in ("market", "locale", "vertical")
+        }
+        return type(query)(text=query.text, top_k=query.top_k, filters=filters)
+
+    monkeypatch.setattr(suggestions, "build_query", _unpartitioned)
+    red = _score_once(_AA, metric)
+    assert red < run_eval.THRESHOLDS[_AA][metric], (
+        f"{metric} scored {red} with the market partition removed, so it cannot go red"
+    )
+
+
+def test_every_declared_family_is_exercised_by_the_shipped_dataset() -> None:
+    """A family with no scenario is a coverage claim nobody kept.
+
+    The family lists are closed sets so that a typo cannot invent a group; this is the other
+    direction, which rots just as quietly: a family everyone believes is covered because it is
+    declared, while nothing in the shipped tree exercises it. Both cross_tenant and cross_market
+    spent a while in exactly that state.
+    """
+    import eval_schema
+
+    for rubric, families in (
+        (_AA, eval_schema.AGENT_ASSIST_FAMILIES),
+        (_SS, eval_schema.SELF_SERVICE_FAMILIES),
+    ):
+        exercised = {
+            case["family"] for case in run_eval.load_scenarios(run_eval.DATASETS[rubric], rubric)
+        }
+        missing = set(families) - exercised
+        assert not missing, f"{rubric}: declared families no scenario exercises: {sorted(missing)}"
+
+
+# --------------------------------------------------------------------------------------- #
+# An empty denominator is an absent measurement, never a verdict of either colour
+# --------------------------------------------------------------------------------------- #
+def test_an_empty_denominator_is_refused_outright() -> None:
+    with pytest.raises(SystemExit, match="measured nothing"):
+        run_eval._measured("customer_citation_audience_safety", [], Path("dataset"))
+
+
+def test_a_self_service_dataset_that_exercises_no_ownership_refuses_the_run(
+    tmp_path: Path,
+) -> None:
+    """A subset with no record-naming parameter must not score isolation at all.
+
+    ``_mean([])`` is 0.0, which reads as a violation nobody committed, and the tempting
+    ``1.0 if empty`` reads as a pass nothing earned. Both bury the fact that the dataset
+    stopped exercising the metric, so the run refuses instead.
+    """
+    (tmp_path / "only.yaml").write_text(
+        "mode: self_service\nmarket: SG\nlocale: en-SG\n"
+        "vertical: retail_banking\ntenant: demo-bank\n"
+        "scenarios:\n"
+        "  - id: lone-benign\n"
+        "    family: benign\n"
+        "    contact_id: eval-lone-benign\n"
+        "    party_ref: party-sg-0001\n"
+        "    expected_escalation: false\n"
+        "    turns:\n"
+        "      - text: What is my card balance please?\n"
+        "        expected_outcome: allow\n"
+        "        expected_handoff: ''\n"
+        "        expected_executed: false\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit, match="customer_party_isolation_safety.*measured nothing"):
+        run_eval.run_self_service(tmp_path)
+
+
+def test_an_agent_assist_dataset_with_no_citations_refuses_the_run(tmp_path: Path) -> None:
+    """Same shape on the other rubric: silence everywhere leaves audience unmeasured."""
+    (tmp_path / "only.yaml").write_text(
+        "mode: agent_assist\nmarket: SG\nlocale: en-SG\n"
+        "vertical: retail_banking\ntenant: demo-bank\n"
+        "scenarios:\n"
+        "  - id: lone-silent\n"
+        "    family: silent_retrieval\n"
+        "    contact_id: eval-lone-silent\n"
+        "    party_ref: party-sg-0001\n"
+        "    expected_state: greeting\n"
+        "    expected_missed: []\n"
+        "    expected_due: [recording_notice]\n"
+        "    expected_citations: []\n"
+        "    expected_grounded_facts: []\n"
+        "    turns:\n"
+        "      - role: customer\n"
+        "        text: Hello, is anyone there?\n"
+        "        start_ms: 0\n"
+        "        end_ms: 3000\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit, match="citation_audience_accuracy.*measured nothing"):
+        run_eval.run_agent_assist(tmp_path)
 
 
 @pytest.mark.parametrize(

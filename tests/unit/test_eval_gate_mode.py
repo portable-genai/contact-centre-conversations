@@ -14,6 +14,7 @@ a boolean would let the client's evidence requirements rot without anything noti
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -108,6 +109,29 @@ def test_a_plain_http_service_off_loopback_is_refused(monkeypatch: pytest.Monkey
     monkeypatch.setenv("CONTACT_QUALITY_URL", "http://quality.example")
     with pytest.raises(Exception, match="https|secure|loopback"):
         run_eval.run_gate(run_eval.SELF_SERVICE, run_eval.DATASETS[run_eval.SELF_SERVICE])
+
+
+# ------------------------------------------------------------------ smoke-only flags
+def test_gate_mode_refuses_the_replay_drafter_rather_than_ignoring_it() -> None:
+    """The authority scores its own runs. A drafter flag that silently did nothing would let a
+    reader believe the replay was what got gated."""
+    assert (
+        run_eval.main(
+            ["--mode", "gate", "--rubric", run_eval.SELF_SERVICE, "--drafter", "replay-gemini"]
+        )
+        == 2
+    )
+
+
+def test_gate_mode_refuses_emit_rather_than_writing_an_empty_report(tmp_path: Path) -> None:
+    """Gate mode produces no per-conversation detail, so an --emit there would write a report
+    with zero runs in it, which a renderer would paint as a clean pass."""
+    target = tmp_path / "report.json"
+    assert (
+        run_eval.main(["--mode", "gate", "--rubric", run_eval.SELF_SERVICE, "--emit", str(target)])
+        == 2
+    )
+    assert not target.exists()
 
 
 # ------------------------------------------------------------------ the happy path

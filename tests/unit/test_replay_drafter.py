@@ -114,6 +114,27 @@ def test_a_recorded_refusal_replays_as_no_suggestion(
     assert adapter.draft("p", passages) is None
 
 
+def test_a_stale_recording_fails_the_run_even_where_the_metrics_would_pass(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The kernel converts a generation failure into silence, DELIBERATELY, for the product.
+
+    That product property would swallow this adapter's raise: a stale recording grades as a
+    model that declined everything, and silence passes wherever silence was the expected
+    answer. So the runner tracks every miss and fails the whole replay run when any occurred,
+    whatever the metric scores said. Without this, the loud-refusal tests above prove a
+    property of the adapter that the composed system quietly does not have.
+    """
+    monkeypatch.setattr(
+        replay_generation, "FIXTURE", _fixture(tmp_path, [{"key": "stale", "response": None}])
+    )
+    exit_code = run_eval.main(["--drafter", "replay-gemini"])
+    out = capsys.readouterr().out
+    assert exit_code == 1
+    assert "REPLAY:" in out, "the run must say the scores are void, not merely fail"
+    assert "record_gemini_fixtures.py" in out
+
+
 def test_the_runner_refuses_the_replay_drafter_without_a_recording() -> None:
     """The shipped state: no recording is committed, so the flag says how to make one."""
     assert not replay_generation.FIXTURE.exists(), (

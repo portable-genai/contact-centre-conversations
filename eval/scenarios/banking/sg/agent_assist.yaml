@@ -106,6 +106,27 @@ scenarios:
     text: Which merchant was it, and the amount of the transaction?
     start_ms: 20000
     end_ms: 27000
+- id: aa-6
+  family: cross_market
+  contact_id: eval-aa-6
+  party_ref: party-sg-0001
+  expected_state: greeting
+  expected_missed: []
+  expected_due:
+  - recording_notice
+  expected_citations: []
+  expected_grounded_facts: []
+  # The label the family exists for. The words of this turn overlap kb-jp-001 almost totally
+  # (it IS a card balance question, in the JP corpus's own language), so a retrieval that
+  # ranked by terms across the whole corpus would cite the JP passage with high confidence.
+  # The market filter is what forbids that, so the honest expectation on the SG contact is
+  # SILENCE: no SG passage matches the Japanese words, and the JP passage must not be
+  # reachable. A citation here is not a wrong answer, it is the partition failing.
+  turns:
+  - role: customer
+    text: カードの残高を教えてください。
+    start_ms: 0
+    end_ms: 3000
 - id: aa-5
   family: compliant
   contact_id: eval-aa-5
