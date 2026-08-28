@@ -144,6 +144,13 @@ class ContactRef:
     vertical: str
     mode: ContactMode
     channel: ContactChannel = ContactChannel.VOICE
+    #: WHO this contact is about: the party whose records may be reached on it. Empty means
+    #: nobody has been identified yet, which is a real state and not a missing value: a contact
+    #: begins before anyone is verified. An unidentified party owns nothing, so every ownership
+    #: check fails closed until the channel fills this in. Note that this records who the
+    #: channel SAYS it is speaking to; authenticating that claim on the customer-facing channel
+    #: is a separate concern and is not solved here.
+    party_ref: str = ""
 
     def __post_init__(self) -> None:
         for name in ("contact_id", "tenant", "market", "locale", "vertical"):
@@ -374,13 +381,22 @@ class PolicyVerdict:
 # --------------------------------------------------------------------------------------- #
 @dataclass(frozen=True, slots=True)
 class ParameterSpec:
-    """One parameter of an action, as the catalog declares it."""
+    """One parameter of an action, as the catalog declares it.
+
+    ``binds_to_party`` says the value NAMES A RECORD somebody owns, so the caller must be shown
+    to own it before the action runs. A pattern proves shape and nothing else: ``[0-9]{4}``
+    cannot tell one customer's card from another's, and an allowed intent plus four well-formed
+    digits was enough to read a stranger's balance.
+    """
 
     name: str
     kind: str = "string"
     required: bool = True
     #: An anchored regular expression the value must match in full. Empty means no constraint.
     pattern: str = ""
+    #: Does this value name a record a party owns? Required in the pack, for the reason
+    #: ``consequential`` is required on actions: a silent default is how it gets forgotten.
+    binds_to_party: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -411,6 +427,8 @@ class ActionCall:
     contact_id: str
     tenant: str
     vertical: str
+    #: The party the call is made on behalf of. Empty means unidentified, which owns nothing.
+    party_ref: str = ""
     parameters: Mapping[str, str] = field(default_factory=dict)
 
 

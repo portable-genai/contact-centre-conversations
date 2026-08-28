@@ -24,7 +24,7 @@ class OnPremToolCatalog:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
-    def describe(self, action_id: str) -> ActionSpec | None:
+    def describe(self, action_id: str, vertical: str) -> ActionSpec | None:
         raise NotImplementedError(_MESSAGE)
 
     def execute(self, call: ActionCall) -> ActionOutcome:

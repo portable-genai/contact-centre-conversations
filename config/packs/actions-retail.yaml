@@ -3,6 +3,12 @@
 # `consequential` is the maker-checker line and it is REQUIRED on every entry: an action whose
 # catalog forgot to say is treated as consequential, and a silent default is how that gets
 # forgotten. A consequential action never auto-executes, whatever the gate decided.
+#
+# `binds_to_party` is the ownership line and it is REQUIRED on every parameter. A pattern
+# proves shape and nothing else: "[0-9]{4}" cannot tell one customer's card from another's,
+# so a value that NAMES a record somebody owns is checked against who is asking before the
+# action runs. Both card and transaction references here name records; a parameter that
+# named, say, a date range would say false.
 kind: actions
 catalog_id: retail-actions-v1
 vertical: retail_banking
@@ -17,6 +23,7 @@ actions:
         kind: string
         required: true
         pattern: "[0-9]{4}"
+        binds_to_party: true
   - action_id: read_recent_transactions
     title: List the last five transactions
     consequential: false
@@ -26,6 +33,7 @@ actions:
         kind: string
         required: true
         pattern: "[0-9]{4}"
+        binds_to_party: true
   - action_id: block_card
     title: Block the card
     consequential: true
@@ -35,6 +43,7 @@ actions:
         kind: string
         required: true
         pattern: "[0-9]{4}"
+        binds_to_party: true
   - action_id: raise_chargeback
     title: Raise a chargeback against a transaction
     consequential: true
@@ -44,7 +53,9 @@ actions:
         kind: string
         required: true
         pattern: "[0-9]{4}"
+        binds_to_party: true
       - name: transaction_ref
         kind: string
         required: true
         pattern: "TXN-[0-9]{6}"
+        binds_to_party: true

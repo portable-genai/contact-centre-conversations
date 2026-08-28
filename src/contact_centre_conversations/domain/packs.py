@@ -549,6 +549,30 @@ class ActionCatalogPack:
         return tuple(action.action_id for action in self.actions)
 
 
+def _parameter(node: Any, scope: str) -> ParameterSpec:
+    """One declared parameter. ``binds_to_party`` is required, like ``consequential`` above.
+
+    A parameter whose catalog forgot to say whether it names somebody's record is exactly the
+    parameter nobody thought about, and defaulting it to "does not" would leave it unchecked
+    while looking deliberate.
+    """
+    param = _mapping(node, f"{scope}: parameter")
+    name = _text(param, "name", f"{scope}: parameter")
+    if "binds_to_party" not in param:
+        raise PackError(
+            f"{scope}: parameter {name!r} must say 'binds_to_party'. A value that names a "
+            "record somebody owns has to be checked against who is asking, and a parameter "
+            "nobody classified is the one that gets missed."
+        )
+    return ParameterSpec(
+        name=name,
+        kind=str(param.get("kind") or "string"),
+        required=bool(param.get("required", True)),
+        pattern=str(param.get("pattern") or ""),
+        binds_to_party=bool(param.get("binds_to_party", False)),
+    )
+
+
 def _actions(node: Mapping[str, Any]) -> ActionCatalogPack:
     what = "action catalog"
     catalog_id = _identifier(node, "catalog_id", what)
@@ -564,15 +588,7 @@ def _actions(node: Mapping[str, Any]) -> ActionCatalogPack:
         raw_params = entry.get("parameters") or ()
         if isinstance(raw_params, str) or not isinstance(raw_params, Sequence):
             raise PackError(f"{scope}: 'parameters' must be a list")
-        parameters = tuple(
-            ParameterSpec(
-                name=_text(_mapping(param, f"{scope}: parameter"), "name", f"{scope}: parameter"),
-                kind=str(_mapping(param, f"{scope}: parameter").get("kind") or "string"),
-                required=bool(_mapping(param, f"{scope}: parameter").get("required", True)),
-                pattern=str(_mapping(param, f"{scope}: parameter").get("pattern") or ""),
-            )
-            for param in raw_params
-        )
+        parameters = tuple(_parameter(param, scope) for param in raw_params)
         if "consequential" not in entry:
             raise PackError(
                 f"{scope}: 'consequential' is required. An action whose catalog forgot to say "

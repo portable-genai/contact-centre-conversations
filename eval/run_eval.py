@@ -112,6 +112,7 @@ def eval_settings(**overrides: Any) -> Settings:
         "audit_path": ":memory:",
         "tenant": "demo-bank",
         "kb_path": str(_REPO_ROOT / "config" / "kb" / "passages.jsonl"),
+        "parties_path": str(_REPO_ROOT / "config" / "parties" / "records.jsonl"),
         "streams_path": str(_REPO_ROOT / "config" / "streams"),
         "packs_path": str(_REPO_ROOT / "config" / "packs"),
         "packs": load_packs(_REPO_ROOT / "config" / "packs"),
@@ -152,6 +153,7 @@ def run_agent_assist(dataset: Path, settings: Settings | None = None) -> EvalRep
             market=case["market"],
             locale=case["locale"],
             vertical=case["vertical"],
+            party_ref=case["party_ref"],
             mode=ContactMode.AGENT_ASSIST,
         )
         turns = case["turns"]
@@ -288,6 +290,7 @@ def run_self_service(dataset: Path, settings: Settings | None = None) -> EvalRep
             market=case["market"],
             locale=case["locale"],
             vertical=case["vertical"],
+            party_ref=case["party_ref"],
             mode=ContactMode.SELF_SERVICE,
         )
         result = built.self_service.handle(

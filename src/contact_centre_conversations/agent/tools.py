@@ -66,6 +66,7 @@ def _submission(
     market: str,
     locale: str,
     vertical: str,
+    party_ref: str,
     text: str,
     index: int,
     mode: ContactMode,
@@ -81,6 +82,7 @@ def _submission(
             market=market,
             locale=locale,
             vertical=vertical,
+            party_ref=party_ref,
             mode=mode,
         ),
         index=index,
@@ -100,6 +102,7 @@ def whisper_panel(
     market: str = "SG",
     locale: str = "en-SG",
     vertical: str = "retail_banking",
+    party_ref: str = "",
     index: int = 0,
     start_ms: int | None = None,
     end_ms: int | None = None,
@@ -121,6 +124,8 @@ def whisper_panel(
       market: Which market's procedure and disclosure packs apply.
       locale: The transcript locale, which selects phrase normalisation.
       vertical: The line of business, which selects which reviewed packs apply.
+      party_ref: Who the contact is about, once verified. Empty means nobody is
+        identified yet, and an unidentified party owns no records.
       index: The turn's index within the contact.
       start_ms: Where the turn starts, in contact milliseconds. A disclosure window cannot be
         judged without offsets, so a turn with none leaves timed disclosures unverifiable
@@ -143,6 +148,7 @@ def whisper_panel(
             market=market,
             locale=locale,
             vertical=vertical,
+            party_ref=party_ref,
             text=text,
             index=index,
             mode=ContactMode.AGENT_ASSIST,
@@ -177,6 +183,7 @@ def self_service_reply(
     market: str = "SG",
     locale: str = "en-SG",
     vertical: str = "retail_banking",
+    party_ref: str = "",
     index: int = 0,
     requested_action: str = "",
     actor: str = DEFAULT_ACTOR,
@@ -195,6 +202,8 @@ def self_service_reply(
       market: Which market's allowlist, procedure and disclosure packs apply.
       locale: The transcript locale, which selects phrase normalisation.
       vertical: The line of business, which selects which reviewed packs apply.
+      party_ref: Who the contact is about, once verified. Empty means nobody is
+        identified yet, and an unidentified party owns no records.
       index: The turn's index within the contact.
       requested_action: The action this turn is asking for, if any.
       actor: The verified identity this call is attributed to.
@@ -213,6 +222,7 @@ def self_service_reply(
             market=market,
             locale=locale,
             vertical=vertical,
+            party_ref=party_ref,
             text=text,
             index=index,
             mode=ContactMode.SELF_SERVICE,

@@ -1,0 +1,19 @@
+# Which party owns which record (obviously FICTIONAL). One JSON object per line.
+#
+# Fields: party_ref, tenant, parameter, value.
+#
+# This is a POSITIVE list and ownership is an exact match on all four fields, so anything not
+# written here is not owned. That is deliberate: a fixture that answered yes by default would
+# make every ownership assertion vacuous, and the metric built on it would be a tautology with
+# a threshold. `parameter` is the action parameter the value is named under, so the same digits
+# under a different parameter are a different record.
+#
+# The two demo-bank parties are the whole point of the file: `party-sg-0001` and `party-sg-0002`
+# are two customers of ONE tenant, so tenant partition cannot tell them apart and only ownership
+# can. `rival-bank` holds the cross-tenant case, where the same digits belong to somebody else
+# entirely.
+{"party_ref": "party-sg-0001", "tenant": "demo-bank", "parameter": "card_last4", "value": "4321"}
+{"party_ref": "party-sg-0001", "tenant": "demo-bank", "parameter": "transaction_ref", "value": "TXN-000042"}
+{"party_ref": "party-sg-0002", "tenant": "demo-bank", "parameter": "card_last4", "value": "9876"}
+{"party_ref": "party-sg-0002", "tenant": "demo-bank", "parameter": "transaction_ref", "value": "TXN-000043"}
+{"party_ref": "party-rb-0001", "tenant": "rival-bank", "parameter": "card_last4", "value": "4321"}

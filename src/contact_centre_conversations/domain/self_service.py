@@ -25,6 +25,7 @@ from datetime import datetime
 from speech_lexicon_kit import Transcript, find_hits
 
 from ..ports.observability import ObservabilityTracerPort
+from ..ports.party_records import PartyRecordsPort
 from ..ports.review_router import ReviewRouterPort
 from ..ports.tool_catalog import ToolCatalogPort
 from . import action_engine, disclosure_engine, handoff, intent_engine, policy_gate
@@ -34,6 +35,7 @@ from .kernel import Citation, Decision, Severity
 from .models import (
     ActionCall,
     ActionOutcome,
+    ActionSpec,
     DisclosureReport,
     GateOutcome,
     HandoffPackage,
@@ -87,12 +89,14 @@ class SelfServiceService:
         kernel: ContactKernel,
         packs: PackLibrary,
         tools: ToolCatalogPort,
+        party_records: PartyRecordsPort,
         review_router: ReviewRouterPort,
         tracer: ObservabilityTracerPort,
     ) -> None:
         self._kernel = kernel
         self._packs = packs
         self._tools = tools
+        self._parties = party_records
         self._review = review_router
         self._tracer = tracer
 
@@ -156,6 +160,7 @@ class SelfServiceService:
                 contact_id=contact.contact_id,
                 tenant=contact.tenant,
                 vertical=contact.vertical,
+                party_ref=contact.party_ref,
                 action_id=requested_action,
                 parameters=parameters or {},
                 as_of=as_of,
@@ -272,6 +277,7 @@ class SelfServiceService:
         contact_id: str,
         tenant: str,
         vertical: str,
+        party_ref: str,
         action_id: str,
         parameters: dict[str, str],
         as_of: datetime,
@@ -285,12 +291,36 @@ class SelfServiceService:
             contact_id=contact_id,
             tenant=tenant,
             vertical=vertical,
+            party_ref=party_ref,
             parameters=parameters,
         )
-        may_execute, provisional = action_engine.decide(spec, call, verdict, as_of=as_of)
+        may_execute, provisional = action_engine.decide(
+            spec, call, verdict, as_of=as_of, ownership=self._ownership(spec, call)
+        )
         if not may_execute:
             return provisional
         return self._tools.execute(call)
+
+    def _ownership(self, spec: ActionSpec | None, call: ActionCall) -> dict[str, bool]:
+        """Resolve, per parameter the catalog binds to a party, whether this caller owns it.
+
+        Only the declared ones are asked about, and only when a value was actually supplied: a
+        lookup for a parameter nobody sent would be a question about nothing. The port raises
+        when it cannot answer, and that propagates rather than becoming a quiet False, because
+        "the records system is down" must not read to a customer as "that is not your card".
+        """
+        if spec is None:
+            return {}
+        return {
+            parameter.name: self._parties.owns(
+                party_ref=call.party_ref,
+                tenant=call.tenant,
+                parameter=parameter.name,
+                value=call.parameters[parameter.name],
+            )
+            for parameter in spec.parameters
+            if parameter.binds_to_party and parameter.name in call.parameters
+        }
 
     def _package(
         self,
@@ -312,6 +342,7 @@ class SelfServiceService:
                 contact_id=contact.contact_id,
                 tenant=contact.tenant,
                 vertical=contact.vertical,
+                party_ref=contact.party_ref,
                 parameters=parameters,
             )
             if action_id

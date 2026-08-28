@@ -70,6 +70,7 @@ def build_services(container: Container) -> ModeServices:
             kernel=kernel,
             packs=settings.packs,
             tools=container.tool_catalog,
+            party_records=container.party_records,
             review_router=container.review_router,
             tracer=container.tracer,
         ),

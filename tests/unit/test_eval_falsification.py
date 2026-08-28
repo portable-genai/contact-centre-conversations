@@ -165,21 +165,27 @@ def _wildcard_settings() -> Settings:
                         "title": "Read the card balance",
                         "consequential": False,
                         "severity": "low",
-                        "parameters": [{"name": "card_last4", "pattern": "[0-9]{4}"}],
+                        "parameters": [
+                            {"name": "card_last4", "pattern": "[0-9]{4}", "binds_to_party": True}
+                        ],
                     },
                     {
                         "action_id": "read_recent_transactions",
                         "title": "List transactions",
                         "consequential": False,
                         "severity": "low",
-                        "parameters": [{"name": "card_last4", "pattern": "[0-9]{4}"}],
+                        "parameters": [
+                            {"name": "card_last4", "pattern": "[0-9]{4}", "binds_to_party": True}
+                        ],
                     },
                     {
                         "action_id": "block_card",
                         "title": "Block the card",
                         "consequential": False,
                         "severity": "high",
-                        "parameters": [{"name": "card_last4", "pattern": "[0-9]{4}"}],
+                        "parameters": [
+                            {"name": "card_last4", "pattern": "[0-9]{4}", "binds_to_party": True}
+                        ],
                     },
                     {
                         "action_id": "raise_chargeback",
@@ -187,8 +193,12 @@ def _wildcard_settings() -> Settings:
                         "consequential": False,
                         "severity": "critical",
                         "parameters": [
-                            {"name": "card_last4", "pattern": "[0-9]{4}"},
-                            {"name": "transaction_ref", "pattern": "TXN-[0-9]{6}"},
+                            {"name": "card_last4", "pattern": "[0-9]{4}", "binds_to_party": True},
+                            {
+                                "name": "transaction_ref",
+                                "pattern": "TXN-[0-9]{6}",
+                                "binds_to_party": True,
+                            },
                         ],
                     },
                 ],

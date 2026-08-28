@@ -27,6 +27,7 @@ def _contact(args: argparse.Namespace, mode: ContactMode) -> ContactRef:
         market=args.market,
         locale=args.locale,
         vertical=args.vertical,
+        party_ref=args.party_ref,
         mode=mode,
         channel=ContactChannel(args.channel),
     )
@@ -46,6 +47,9 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--market", default="SG")
         command.add_argument("--locale", default="en-SG")
         command.add_argument("--vertical", default="retail_banking")
+        # WHO the contact is about. Empty is the honest default: until the operator
+        # has verified the caller, nobody is identified and nobody owns anything.
+        command.add_argument("--party-ref", default="", dest="party_ref")
         command.add_argument("--channel", default="voice", choices=["voice", "chat"])
         command.add_argument("--actor", default="agent@bank.example")
 
