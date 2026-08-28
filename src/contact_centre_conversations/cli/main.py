@@ -26,6 +26,7 @@ def _contact(args: argparse.Namespace, mode: ContactMode) -> ContactRef:
         tenant=args.tenant,
         market=args.market,
         locale=args.locale,
+        vertical=args.vertical,
         mode=mode,
         channel=ContactChannel(args.channel),
     )
@@ -44,6 +45,7 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--tenant", default="demo-bank")
         command.add_argument("--market", default="SG")
         command.add_argument("--locale", default="en-SG")
+        command.add_argument("--vertical", default="retail_banking")
         command.add_argument("--channel", default="voice", choices=["voice", "chat"])
         command.add_argument("--actor", default="agent@bank.example")
 

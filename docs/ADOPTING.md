@@ -119,10 +119,14 @@ too. The script deliberately does NOT touch the human decisions below.
 4. **The policy packs, which are your conduct position.** This is the main act of adoption.
    `config/packs/` ships one worked example of each kind and every one of them is synthetic:
    a card-dispute procedure, a retail disclosure pack, a self-service intent allowlist, an action
-   catalog and a market cue lexicon. Author your own, per market: the procedure states and their
-   transitions, which disclosures are required and how soon, which intents self-service may
-   resolve at all (an allowlist, so an intent nobody listed is refused rather than attempted),
-   which actions exist and which need maker-checker, and the vulnerability and sentiment cues.
+   catalog and a market cue lexicon. Author your own, per market AND per vertical: the procedure
+   states and their transitions, which disclosures are required and how soon, which intents
+   self-service may resolve at all (an allowlist, so an intent nobody listed is refused rather
+   than attempted), which actions exist and which need maker-checker, and the vulnerability and
+   sentiment cues. Every pack declares a `vertical`, the line of business whose reviewed policy
+   it carries, and packs are selected by `(market, vertical)`: a bank and an insurer both operate
+   in SG and their procedures are different reviewed artifacts. Two packs of one kind claiming
+   the same key is a boot failure naming both, never a race to sort first.
    `domain/packs.py` validates at boot and stops the process on a bad pack, including dangling
    references between procedure steps.
 5. **The knowledge base.** Under `local` the corpus is a JSON Lines fixture at `kb_path`. Under

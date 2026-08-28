@@ -127,17 +127,26 @@ class HandoffTrigger(LenientStrEnum):
 # --------------------------------------------------------------------------------------- #
 @dataclass(frozen=True, slots=True)
 class ContactRef:
-    """Identity of one contact: who it belongs to, where it runs, and under which mode."""
+    """Identity of one contact: who it belongs to, where it runs, and under which mode.
+
+    ``vertical`` is the line of business the contact is being handled under, and it is a
+    REQUIRED field with no default. A market alone does not select a policy: a bank and an
+    insurer both operate in SG, their procedures and disclosures are different reviewed
+    artifacts, and packs are selected by ``(market, vertical)``. A default here would pick one
+    line of business for a contact nobody classified, which is the silent-shadowing failure the
+    pack key exists to prevent.
+    """
 
     contact_id: str
     tenant: str
     market: str
     locale: str
+    vertical: str
     mode: ContactMode
     channel: ContactChannel = ContactChannel.VOICE
 
     def __post_init__(self) -> None:
-        for name in ("contact_id", "tenant", "market", "locale"):
+        for name in ("contact_id", "tenant", "market", "locale", "vertical"):
             if not str(getattr(self, name)).strip():
                 raise ValueError(f"ContactRef.{name} must not be empty")
 
@@ -391,11 +400,17 @@ class ActionSpec:
 
 @dataclass(frozen=True, slots=True)
 class ActionCall:
-    """A validated request to execute one action on behalf of one contact."""
+    """A validated request to execute one action on behalf of one contact.
+
+    ``vertical`` travels with the call because the catalog is scoped by it: two lines of
+    business may declare the same ``action_id`` and mean different things by it, so the
+    executor must be told which catalog the caller was reading.
+    """
 
     action_id: str
     contact_id: str
     tenant: str
+    vertical: str
     parameters: Mapping[str, str] = field(default_factory=dict)
 
 

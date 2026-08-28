@@ -445,6 +445,9 @@ class VoiceSettings:
     #: Fallbacks when a dialled number (DNIS) has no entry in :attr:`dnis`.
     default_market: str = "SG"
     default_locale: str = "en-SG"
+    #: The line of business a call lands in when its DNIS route names none. A caller dialled a
+    #: number, and the number is what says which business they reached.
+    default_vertical: str = "retail_banking"
     #: DNIS routing: dialled number -> {tenant, market, locale}. The tenant a call lands in is
     #: decided HERE or by the deployment default, never by anything the caller sent.
     dnis: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
@@ -493,6 +496,7 @@ class VoiceSettings:
             contact_header=str(data.get("contact_header") or defaults.contact_header),
             default_market=str(data.get("default_market") or defaults.default_market),
             default_locale=str(data.get("default_locale") or defaults.default_locale),
+            default_vertical=str(data.get("default_vertical") or defaults.default_vertical),
             dnis=dnis,
         )
 

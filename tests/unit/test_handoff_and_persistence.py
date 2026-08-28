@@ -51,7 +51,7 @@ from tests.conftest import SHIPPED_PACKS, local_settings
 from tests.fixtures import sample_cases
 
 _AS_OF = datetime(2026, 8, 8, 9, 0, tzinfo=UTC)
-_PROCEDURE = SHIPPED_PACKS.procedure_for("SG")
+_PROCEDURE = SHIPPED_PACKS.procedure_for("SG", sample_cases.VERTICAL)
 assert _PROCEDURE is not None
 
 
@@ -104,7 +104,7 @@ def test_a_package_with_no_transcript_is_refused_by_its_own_producer() -> None:
 
 
 def test_an_explicit_request_for_a_person_beats_a_policy_code() -> None:
-    cues = SHIPPED_PACKS.cues_for("SG")
+    cues = SHIPPED_PACKS.cues_for("SG", sample_cases.VERTICAL)
     assert cues is not None
     trigger = handoff.decide_trigger(
         verdict=None,
@@ -117,7 +117,7 @@ def test_an_explicit_request_for_a_person_beats_a_policy_code() -> None:
 
 
 def test_a_vulnerability_cue_wins_over_everything_but_a_screen_failure() -> None:
-    cues = SHIPPED_PACKS.cues_for("SG")
+    cues = SHIPPED_PACKS.cues_for("SG", sample_cases.VERTICAL)
     assert cues is not None
     trigger = handoff.decide_trigger(
         verdict=None,
@@ -252,6 +252,7 @@ def test_a_cross_tenant_write_is_refused_too() -> None:
         tenant=sample_cases.OTHER_TENANT,
         market=sample_cases.MARKET,
         locale=sample_cases.LOCALE,
+        vertical=sample_cases.VERTICAL,
         mode=ContactMode.AGENT_ASSIST,
     )
     with pytest.raises(TenantMismatchError):

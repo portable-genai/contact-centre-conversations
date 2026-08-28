@@ -28,11 +28,11 @@ class LocalFixtureToolCatalog:
         """Every execution this adapter was asked to perform, for tests and the demo panel."""
         return tuple(self._calls)
 
-    def describe(self, action_id: str) -> ActionSpec | None:
-        return self._settings.packs.action_spec(action_id)
+    def describe(self, action_id: str, vertical: str) -> ActionSpec | None:
+        return self._settings.packs.action_spec(action_id, vertical)
 
     def execute(self, call: ActionCall) -> ActionOutcome:
-        spec = self.describe(call.action_id)
+        spec = self.describe(call.action_id, call.vertical)
         if spec is None:
             raise LookupError(f"no catalog declares action {call.action_id!r}")
         if spec.consequential:

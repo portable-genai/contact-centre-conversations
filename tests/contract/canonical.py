@@ -166,6 +166,7 @@ CANONICAL_ACTION = ActionCall(
     action_id="read_card_balance",
     contact_id=sample_cases.SELF_SERVICE_CONTACT_ID,
     tenant=sample_cases.TENANT,
+    vertical=sample_cases.VERTICAL,
     parameters={"card_last4": "4321"},
 )
 

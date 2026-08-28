@@ -158,6 +158,7 @@ def _wildcard_settings() -> Settings:
             {
                 "kind": "actions",
                 "catalog_id": "retail-actions-v1",
+                "vertical": "retail_banking",
                 "actions": [
                     {
                         "action_id": "read_card_balance",
@@ -196,6 +197,7 @@ def _wildcard_settings() -> Settings:
                 "kind": "allowlist",
                 "tenant": "demo-bank",
                 "market": "SG",
+                "vertical": "retail_banking",
                 "locale": "en-SG",
                 "confidence_floor": 0.0,
                 "intents": [

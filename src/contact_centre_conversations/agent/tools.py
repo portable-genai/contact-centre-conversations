@@ -65,6 +65,7 @@ def _submission(
     tenant: str,
     market: str,
     locale: str,
+    vertical: str,
     text: str,
     index: int,
     mode: ContactMode,
@@ -75,7 +76,12 @@ def _submission(
 ) -> TurnSubmission:
     return TurnSubmission(
         contact=ContactRef(
-            contact_id=contact_id, tenant=tenant, market=market, locale=locale, mode=mode
+            contact_id=contact_id,
+            tenant=tenant,
+            market=market,
+            locale=locale,
+            vertical=vertical,
+            mode=mode,
         ),
         index=index,
         speaker_id=role.value,
@@ -93,6 +99,7 @@ def whisper_panel(
     tenant: str = "demo-bank",
     market: str = "SG",
     locale: str = "en-SG",
+    vertical: str = "retail_banking",
     index: int = 0,
     start_ms: int | None = None,
     end_ms: int | None = None,
@@ -113,6 +120,7 @@ def whisper_panel(
       tenant: Tenant partition. A contact belonging to another tenant is refused.
       market: Which market's procedure and disclosure packs apply.
       locale: The transcript locale, which selects phrase normalisation.
+      vertical: The line of business, which selects which reviewed packs apply.
       index: The turn's index within the contact.
       start_ms: Where the turn starts, in contact milliseconds. A disclosure window cannot be
         judged without offsets, so a turn with none leaves timed disclosures unverifiable
@@ -134,6 +142,7 @@ def whisper_panel(
             tenant=tenant,
             market=market,
             locale=locale,
+            vertical=vertical,
             text=text,
             index=index,
             mode=ContactMode.AGENT_ASSIST,
@@ -167,6 +176,7 @@ def self_service_reply(
     tenant: str = "demo-bank",
     market: str = "SG",
     locale: str = "en-SG",
+    vertical: str = "retail_banking",
     index: int = 0,
     requested_action: str = "",
     actor: str = DEFAULT_ACTOR,
@@ -184,6 +194,7 @@ def self_service_reply(
       tenant: Tenant partition. A contact belonging to another tenant is refused.
       market: Which market's allowlist, procedure and disclosure packs apply.
       locale: The transcript locale, which selects phrase normalisation.
+      vertical: The line of business, which selects which reviewed packs apply.
       index: The turn's index within the contact.
       requested_action: The action this turn is asking for, if any.
       actor: The verified identity this call is attributed to.
@@ -201,6 +212,7 @@ def self_service_reply(
             tenant=tenant,
             market=market,
             locale=locale,
+            vertical=vertical,
             text=text,
             index=index,
             mode=ContactMode.SELF_SERVICE,

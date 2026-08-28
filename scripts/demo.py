@@ -105,6 +105,8 @@ PLANTED_NRIC = "S1234567D"
 
 MARKET = "SG"
 LOCALE = "en-SG"
+#: The line of business the shipped packs carry: they select on it with market.
+VERTICAL = "retail_banking"
 
 #: A compliant agent-assist contact: the recording notice lands inside its window.
 COMPLIANT_CONTACT = "demo-contact-0001"
@@ -840,6 +842,7 @@ class DemoRun:
                 tenant=TENANT,
                 market=MARKET,
                 locale=LOCALE,
+                vertical=VERTICAL,
                 mode=mode,
             ),
             index=index,
@@ -1048,6 +1051,7 @@ def _escalated_result() -> models.AssistResult:
         tenant=TENANT,
         market=MARKET,
         locale=LOCALE,
+        vertical=VERTICAL,
         mode=ContactMode.AGENT_ASSIST,
     )
     now = utcnow()
@@ -1156,6 +1160,7 @@ def _exit_channel(container: Any) -> Any:
             tenant=TENANT,
             market=MARKET,
             locale=LOCALE,
+            vertical=VERTICAL,
             mode=ContactMode.AGENT_ASSIST,
         )
     )

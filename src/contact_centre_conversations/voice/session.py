@@ -368,12 +368,14 @@ class VoiceCallSession:
         Built from the same reviewed allowlist pack the gate enforces, so the engine can never
         even name an action the gate would not recognise. Requesting still grants nothing.
         """
-        allowlist = self._settings.packs.allowlist_for(self._contact.tenant, self._contact.market)
+        allowlist = self._settings.packs.allowlist_for(
+            self._contact.tenant, self._contact.market, self._contact.vertical
+        )
         if allowlist is None:
             return ()
         specs = []
         for action_id in allowlist.allowed_actions:
-            spec = self._tools.describe(action_id)
+            spec = self._tools.describe(action_id, self._contact.vertical)
             if spec is None:
                 continue
             specs.append(

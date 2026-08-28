@@ -5,6 +5,7 @@
 # forgotten. A consequential action never auto-executes, whatever the gate decided.
 kind: actions
 catalog_id: retail-actions-v1
+vertical: retail_banking
 
 actions:
   - action_id: read_card_balance

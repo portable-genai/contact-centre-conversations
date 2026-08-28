@@ -6,6 +6,7 @@
 kind: cues
 pack_id: sg-customer-cues-v1
 market: SG
+vertical: retail_banking
 locale: en-SG
 
 # An explicit request for a person. The customer sees this reason on their transfer, so it wins

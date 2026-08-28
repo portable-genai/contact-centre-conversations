@@ -31,6 +31,9 @@ class TurnRequest(BaseModel):
     contact_id: str
     market: str
     locale: str
+    #: The line of business this contact is handled under. Required, and carried like the
+    #: market: it selects which reviewed packs apply, and no default can guess it.
+    vertical: str
     text: str
     index: int = 0
     speaker_id: str = "customer"

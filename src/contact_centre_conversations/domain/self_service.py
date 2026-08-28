@@ -129,13 +129,17 @@ class SelfServiceService:
             degradation = degradation_for(_MODE, guarded.screen)
             transcript = self._kernel.transcript(contact)
 
-            allowlist = self._packs.allowlist_for(contact.tenant, contact.market)
+            allowlist = self._packs.allowlist_for(contact.tenant, contact.market, contact.vertical)
             intent = (
                 intent_engine.best_intent(allowlist, guarded.turn.text)
                 if allowlist is not None and degradation.allow_model
                 else None
             )
-            spec = self._packs.action_spec(requested_action) if requested_action else None
+            spec = (
+                self._packs.action_spec(requested_action, contact.vertical)
+                if requested_action
+                else None
+            )
             verdict = policy_gate.evaluate(
                 allowlist,
                 tenant=contact.tenant,
@@ -151,6 +155,7 @@ class SelfServiceService:
                 verdict,
                 contact_id=contact.contact_id,
                 tenant=contact.tenant,
+                vertical=contact.vertical,
                 action_id=requested_action,
                 parameters=parameters or {},
                 as_of=as_of,
@@ -159,7 +164,7 @@ class SelfServiceService:
             # Cue lists are PER MARKET policy, so they are looked up per contact rather than
             # bound once at construction: a deployment serving two markets would otherwise apply
             # one market's vulnerability definition to the other's customers.
-            cues = self._packs.cues_for(contact.market)
+            cues = self._packs.cues_for(contact.market, contact.vertical)
             trigger = handoff.decide_trigger(
                 verdict=verdict,
                 consecutive_failures=state.consecutive_failures,
@@ -172,6 +177,7 @@ class SelfServiceService:
 
             disclosures = self._disclosures(
                 contact.market,
+                contact.vertical,
                 transcript=transcript,
                 as_of=as_of,
                 contact_ended=submission.ends_contact,
@@ -265,6 +271,7 @@ class SelfServiceService:
         *,
         contact_id: str,
         tenant: str,
+        vertical: str,
         action_id: str,
         parameters: dict[str, str],
         as_of: datetime,
@@ -272,9 +279,13 @@ class SelfServiceService:
         """Prepare and, only where permitted, execute. The catalog is asked before anything runs."""
         if not action_id:
             return None
-        spec = self._tools.describe(action_id)
+        spec = self._tools.describe(action_id, vertical)
         call = ActionCall(
-            action_id=action_id, contact_id=contact_id, tenant=tenant, parameters=parameters
+            action_id=action_id,
+            contact_id=contact_id,
+            tenant=tenant,
+            vertical=vertical,
+            parameters=parameters,
         )
         may_execute, provisional = action_engine.decide(spec, call, verdict, as_of=as_of)
         if not may_execute:
@@ -293,13 +304,14 @@ class SelfServiceService:
         parameters: dict[str, str],
     ) -> HandoffPackage:
         contact = submission.contact
-        procedure = self._packs.procedure_for(contact.market)
+        procedure = self._packs.procedure_for(contact.market, contact.vertical)
         progress = advance(procedure, transcript, as_of=as_of) if procedure is not None else None
         pending = (
             ActionCall(
                 action_id=action_id,
                 contact_id=contact.contact_id,
                 tenant=contact.tenant,
+                vertical=contact.vertical,
                 parameters=parameters,
             )
             if action_id
@@ -317,12 +329,20 @@ class SelfServiceService:
         )
 
     def _disclosures(
-        self, market: str, *, transcript: Transcript, as_of: datetime, contact_ended: bool
+        self,
+        market: str,
+        vertical: str,
+        *,
+        transcript: Transcript,
+        as_of: datetime,
+        contact_ended: bool,
     ) -> DisclosureReport:
-        pack = self._packs.disclosure_for(market)
+        pack = self._packs.disclosure_for(market, vertical)
         if pack is None:
-            raise ProcedureEngineError(f"no disclosure pack is configured for market {market!r}")
-        procedure = self._packs.procedure_for(market)
+            raise ProcedureEngineError(
+                f"no disclosure pack is configured for market {market!r} and vertical {vertical!r}"
+            )
+        procedure = self._packs.procedure_for(market, vertical)
         hits = find_hits(transcript, procedure.lexicon) if procedure is not None else ()
         return disclosure_engine.evaluate_disclosures(
             pack,

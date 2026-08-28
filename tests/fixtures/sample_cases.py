@@ -28,6 +28,7 @@ __all__ = [
     "IN_SCOPE_TURN",
     "LOCALE",
     "MARKET",
+    "VERTICAL",
     "MISSED_DISCLOSURE_CONTACT_ID",
     "OPENING_TURN",
     "OTHER_TENANT",
@@ -50,6 +51,8 @@ OTHER_TENANT = "rival-bank"
 
 MARKET = "SG"
 LOCALE = "en-SG"
+#: The line of business the shipped packs carry. Selecting a pack needs it alongside market.
+VERTICAL = "retail_banking"
 
 #: The scripted stream ids the offline channel and speech adapters replay. Each is a file under
 #: ``config/streams/``; the names are shared so a test and the demo drive the same contact.
@@ -62,6 +65,7 @@ AGENT_CONTACT = ContactRef(
     tenant=TENANT,
     market=MARKET,
     locale=LOCALE,
+    vertical=VERTICAL,
     mode=ContactMode.AGENT_ASSIST,
 )
 
@@ -70,6 +74,7 @@ CUSTOMER_CONTACT = ContactRef(
     tenant=TENANT,
     market=MARKET,
     locale=LOCALE,
+    vertical=VERTICAL,
     mode=ContactMode.SELF_SERVICE,
 )
 

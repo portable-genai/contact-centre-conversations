@@ -610,6 +610,7 @@ class VoiceGateway(asyncio.DatagramProtocol):
             tenant=tenant,
             market=str(route.get("market", "") or settings.voice.default_market),
             locale=str(route.get("locale", "") or settings.voice.default_locale),
+            vertical=str(route.get("vertical", "") or settings.voice.default_vertical),
             mode=ContactMode.SELF_SERVICE,
             channel=ContactChannel.VOICE,
         )

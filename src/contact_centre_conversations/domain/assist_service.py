@@ -86,17 +86,19 @@ class AgentAssistService:
             degradation = degradation_for(_MODE, guarded.screen)
             transcript = self._kernel.transcript(contact)
 
-            procedure = self._packs.procedure_for(contact.market)
+            procedure = self._packs.procedure_for(contact.market, contact.vertical)
             if procedure is None:
                 raise procedure_engine.ProcedureEngineError(
-                    f"no procedure pack is configured for market {contact.market!r}: an "
-                    "agent-assist panel with no procedure would have nothing deterministic to show"
+                    f"no procedure pack is configured for market {contact.market!r} and vertical "
+                    f"{contact.vertical!r}: an agent-assist panel with no procedure would have "
+                    "nothing deterministic to show"
                 )
             progress = procedure_engine.advance(procedure, transcript, as_of=as_of)
             next_step = procedure_engine.next_best_step(procedure, progress)
 
             disclosures = self._disclosures(
                 contact.market,
+                contact.vertical,
                 transcript=transcript,
                 progress=progress,
                 as_of=as_of,
@@ -161,19 +163,21 @@ class AgentAssistService:
     def _disclosures(
         self,
         market: str,
+        vertical: str,
         *,
         transcript: Transcript,
         progress: ProcedureProgress,
         as_of: datetime,
         contact_ended: bool,
     ) -> DisclosureReport:
-        pack = self._packs.disclosure_for(market)
-        procedure = self._packs.procedure_for(market)
+        pack = self._packs.disclosure_for(market, vertical)
+        procedure = self._packs.procedure_for(market, vertical)
         if pack is None:
-            # No pack is not "no obligations": it is a market this deployment was not configured
-            # for, and an empty report would look identical to a market with nothing required.
+            # No pack is not "no obligations": it is a market and line of business this
+            # deployment was not configured for, and an empty report would look identical to a
+            # market with nothing required.
             raise procedure_engine.ProcedureEngineError(
-                f"no disclosure pack is configured for market {market!r}"
+                f"no disclosure pack is configured for market {market!r} and vertical {vertical!r}"
             )
         hits = find_hits(transcript, procedure.lexicon) if procedure is not None else ()
         return disclosure_engine.evaluate_disclosures(

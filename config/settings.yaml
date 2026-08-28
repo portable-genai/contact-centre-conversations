@@ -115,6 +115,7 @@ voice:
   contact_header: X-Contact-Id
   default_market: ${CONTACT_VOICE_MARKET:-SG}
   default_locale: ${CONTACT_VOICE_LOCALE:-en-SG}
+  default_vertical: ${CONTACT_VOICE_VERTICAL:-retail_banking}
   # DNIS routing: dialled number -> tenant/market/locale. The tenant a call lands in is
   # decided here or by the `tenant` default above, never by anything the caller sent.
   dnis: {}

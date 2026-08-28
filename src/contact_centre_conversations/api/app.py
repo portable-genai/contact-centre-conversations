@@ -140,6 +140,7 @@ def _submission(request: TurnRequest, *, mode: ContactMode, principal: Principal
             tenant=principal.tenant or _container().settings.tenant,
             market=request.market,
             locale=request.locale,
+            vertical=request.vertical,
             mode=mode,
             channel=ContactChannel(request.channel),
         ),

@@ -151,6 +151,7 @@ def run_agent_assist(dataset: Path, settings: Settings | None = None) -> EvalRep
             tenant="demo-bank",
             market=case["market"],
             locale=case["locale"],
+            vertical=case["vertical"],
             mode=ContactMode.AGENT_ASSIST,
         )
         turns = case["turns"]
@@ -286,6 +287,7 @@ def run_self_service(dataset: Path, settings: Settings | None = None) -> EvalRep
             tenant="demo-bank",
             market=case["market"],
             locale=case["locale"],
+            vertical=case["vertical"],
             mode=ContactMode.SELF_SERVICE,
         )
         result = built.self_service.handle(
