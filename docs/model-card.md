@@ -63,17 +63,53 @@ port is a wider blast radius.
 
 ## Evaluation as it stands
 
-Two rubric sets run in every `make gate`, one per mode, each against its own Hrz4 bundle:
+The full picture, with the thresholds beside the metrics and the reasoning beside the
+thresholds, is [`evals.md`](evals.md). That page is generated from the artifacts that gate the
+build, so it cannot drift from them; this section says only what a model-risk reader needs.
 
-- **agent_assist**: `next_step_accuracy`, `reminder_timeliness`, `citation_accuracy`,
-  `groundedness`, `pii_safety`.
-- **self_service**: `gate_precision`, `handoff_safety`, `maker_checker_safety`, `containment`.
+**Two kinds of scoring, deliberately.** Seventeen deterministic metrics answer the questions
+code can answer: was the turn allowed, was the reply grounded in a passage actually retrieved,
+did an action execute against a record its caller owns, did anything personal survive into the
+audit trail. A judged half answers the one it cannot: is the reply any good. A reply can be
+allowed, grounded, cited, clean, and still tell a customer who has just said they cannot pay
+that there is nothing to be done.
 
-`containment` is the one metric with a deliberately modest threshold, because a self-service
-assistant that contains too much is a worse outcome than one that hands off. Every metric is
-proved able to fail: `tests/unit/test_eval_falsification.py` and
-`tests/unit/test_not_falsely_green.py` plant a mutant and fail the build if the metric still
-passes.
+**Every metric is proved able to fail.** `tests/unit/test_eval_falsification.py` plants the
+specific defect each metric exists to catch and fails the build if the metric stays green.
+Twice during this work the harness caught a red input that was not one: widening the ownership
+fixture removes a violation rather than creating one, and reclassifying a passage makes the
+metric and the product agree. Both defects live in the product, so both tests now remove the
+control itself.
+
+**The judge is falsified too**, which matters more than it sounds: a broken metric returns a
+wrong number and something notices, while a broken judge keeps returning numbers that keep
+clearing the bar. `tests/unit/test_narrative_floor.py` constructs a judge that certifies
+anything and one that grades nothing, and catches both. The offline judge is the default and is
+chosen on the command line, never from the environment, and the offline run is proved to need no
+network by removing the socket rather than by reading the code.
+
+**Quality floors are data owned by model risk**, in `config/quality-floors.toml`, with a floor
+that refuses, a target that means full quality, and a DEGRADED band between them. The
+customer-facing bar is the higher one because nobody reviews that reply before a customer reads
+it. The expectations are a degradation TABLE rather than a threshold, so a profile that quietly
+got better fails too: a band nobody predicted is a change nobody reviewed.
+
+**What the scores are, and are not.** Every deterministic metric scores the offline template
+drafter, so `citation_accuracy` and `groundedness` measure the VALIDATOR rather than a model's
+restraint: the template quoter structurally cannot invent a figure. Model quality is assessed in
+the judged half, and it grades recorded text rather than a live call. Two bands there were
+predicted wrong and the table said so: for a simple factual answer the template drafter is not
+degraded, because quoting the passage supplies exactly the reference points and the citation the
+criteria ask for. Those rows were recalibrated to what was measured, with the reasoning recorded
+in the dataset, and degradation appears where a reply must do more than quote.
+
+**Attribution.** Bands are calibrated against the deterministic judge named in the run header.
+Changing judges means recalibrating the table in the same commit, because a score is only
+meaningful against the judge that produced it.
+
+**Scored over** two verticals (retail banking, general insurance) and two markets (SG, JP),
+customer-facing scenarios multi-turn. The voice path carries no scenarios: word error rate per
+locale and per channel needs audio corpora and is a named follow-up, not an omission.
 
 ## Remaining controls (TODO, repo owner)
 

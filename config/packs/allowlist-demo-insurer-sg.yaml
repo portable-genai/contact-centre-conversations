@@ -1,0 +1,94 @@
+# Allowlist pack: what self-service may HANDLE and, separately, what it may DO, for demo-insurer
+# in Singapore (FICTIONAL policy).
+#
+# The taxonomy is deliberately split into the two halves a contact centre actually has. The
+# first group is the everyday volume: policy details, premium, claim status, excess, documents,
+# no-claims discount. The second group carries a HIGHER confidence floor and, where it acts at
+# all, acts only through a consequential action a person approves, because getting one of these
+# wrong starts an indemnity obligation, ends cover, or binds a new period.
+#
+# `coverage_question` is the sharpest one and it names NO action on purpose. "Am I covered for
+# X" is answered from published policy wording or not at all: an assistant that reasons its way
+# to a yes has given coverage advice, and that is the classic mis-selling exposure.
+kind: allowlist
+tenant: demo-insurer
+market: SG
+vertical: general_insurance
+locale: en-SG
+confidence_floor: 0.6
+
+intents:
+  - intent_id: policy_details
+    title: Tell the customer what their policy covers and for how long
+    phrases:
+      - what does my policy cover
+      - my policy details
+      - what is my sum insured
+    actions: [read_policy_summary]
+  - intent_id: premium_due
+    title: Tell the customer their next premium instalment
+    phrases:
+      - when is my premium due
+      - how much is my premium
+      - my next instalment
+    actions: [read_premium_schedule]
+  - intent_id: claim_status
+    title: Tell the customer where their claim has reached
+    phrases:
+      - what is the status of my claim
+      - how is my claim going
+      - any update on my claim
+    actions: [read_claim_status]
+  - intent_id: excess_enquiry
+    title: Tell the customer the excess payable
+    phrases:
+      - how much is my excess
+      - what excess do i pay
+    actions: [read_excess]
+  - intent_id: policy_documents
+    title: Resend the policy documents
+    phrases:
+      - send me my policy documents
+      - resend my policy schedule
+    actions: [send_policy_documents]
+  - intent_id: no_claims_discount
+    title: Tell the customer their no-claims discount standing
+    phrases:
+      - my no claims discount
+      - have i lost my no claims
+    actions: [read_no_claims_discount]
+
+  # The high-stakes half. Higher floor, and every action here is consequential.
+  - intent_id: lodge_claim
+    title: Lodge a first notification of loss
+    confidence_floor: 0.8
+    phrases:
+      - i want to make a claim
+      - i need to lodge a claim
+      - report an accident
+    actions: [open_claim]
+  - intent_id: cancel_policy
+    title: Cancel the policy
+    confidence_floor: 0.8
+    phrases:
+      - i want to cancel my policy
+      - cancel my insurance
+    actions: [cancel_policy]
+  - intent_id: renewal_decision
+    title: Accept the renewal terms
+    confidence_floor: 0.8
+    phrases:
+      - i want to renew my policy
+      - accept the renewal
+    actions: [accept_renewal]
+
+actions:
+  - read_policy_summary
+  - read_premium_schedule
+  - read_claim_status
+  - read_excess
+  - read_no_claims_discount
+  - send_policy_documents
+  - open_claim
+  - cancel_policy
+  - accept_renewal

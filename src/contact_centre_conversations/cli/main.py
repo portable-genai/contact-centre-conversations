@@ -20,12 +20,14 @@ from ..domain.models import ContactChannel, ContactRef
 from ..domain.modes import ContactMode, ModeDisabledError
 
 
-def _contact(args: argparse.Namespace, mode: ContactMode) -> ContactRef:
+def _contact(args: argparse.Namespace, mode: ContactMode, *, tenant: str) -> ContactRef:
     return ContactRef(
         contact_id=args.contact_id,
-        tenant=args.tenant,
+        tenant=tenant,
         market=args.market,
         locale=args.locale,
+        vertical=args.vertical,
+        party_ref=args.party_ref,
         mode=mode,
         channel=ContactChannel(args.channel),
     )
@@ -41,9 +43,12 @@ def main(argv: list[str] | None = None) -> int:
     ):
         command = sub.add_parser(name, help=help_text)
         command.add_argument("contact_id", help="Also names the scripted stream to replay.")
-        command.add_argument("--tenant", default="demo-bank")
         command.add_argument("--market", default="SG")
         command.add_argument("--locale", default="en-SG")
+        command.add_argument("--vertical", default="retail_banking")
+        # WHO the contact is about. Empty is the honest default: until the operator
+        # has verified the caller, nobody is identified and nobody owns anything.
+        command.add_argument("--party-ref", default="", dest="party_ref")
         command.add_argument("--channel", default="voice", choices=["voice", "chat"])
         command.add_argument("--actor", default="agent@bank.example")
 
@@ -89,7 +94,16 @@ def main(argv: list[str] | None = None) -> int:
         return 3
 
     built = services.build_services(container)
-    contact = _contact(args, mode)
+    # The tenant partition is configuration, not a flag. It says whose contacts this
+    # process may read, and a caller who can choose it can choose somebody else's.
+    tenant = container.settings.tenant.strip()
+    if not tenant:
+        print(
+            "refused: no tenant partition is configured (CONTACT_TENANT / settings tenant)",
+            file=sys.stderr,
+        )
+        return 3
+    contact = _contact(args, mode, tenant=tenant)
     channel = container.conversation_channel
     channel.open(contact)
 

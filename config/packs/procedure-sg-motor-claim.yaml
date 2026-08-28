@@ -1,0 +1,79 @@
+# Procedure pack: a motor claim first notification of loss, Singapore general insurer
+# (FICTIONAL policy).
+#
+# The order is the control, and it is the order E3's ordered-script requirement expresses for
+# the same domain: establish who is calling, take the incident, THEN confirm what is covered,
+# and only then explain what happens next. Confirming cover before the incident is described is
+# how a caller is told they are covered for something they have not yet said happened.
+kind: procedure
+pack_id: sg-motor-claim-v1
+market: SG
+vertical: general_insurance
+locale: en-SG
+initial_state: greeting
+
+lexicon:
+  - entry_id: greeting_given
+    phrases:
+      - thank you for calling
+      - thanks for calling
+      - how can i help you today
+  - entry_id: identity_verified
+    phrases:
+      - confirm your date of birth
+      - your policy number
+      - security questions
+  - entry_id: incident_details_taken
+    phrases:
+      - when did the incident happen
+      - where did it happen
+      - was anyone injured
+  - entry_id: cover_confirmed
+    phrases:
+      - your policy covers
+      - the excess payable is
+      - this is covered under
+  - entry_id: next_steps_explained
+    phrases:
+      - an assessor will contact you
+      - your claim reference is
+      - we will be in touch
+
+states:
+  - state_id: greeting
+    title: Open the contact
+    instruction: Greet the caller and ask how you can help today.
+    exit_criteria: [greeting_given]
+    required_evidence: [greeting_given]
+    transitions: [verify_identity]
+    role: agent
+  - state_id: verify_identity
+    title: Verify the caller
+    instruction: Verify the caller before discussing the policy, taking date of birth and policy number.
+    exit_criteria: [identity_verified]
+    required_evidence: [identity_verified]
+    transitions: [take_incident]
+    role: agent
+  - state_id: take_incident
+    title: Take the incident detail
+    instruction: Ask when and where the incident happened, and whether anyone was injured.
+    exit_criteria: [incident_details_taken]
+    required_evidence: [incident_details_taken]
+    transitions: [confirm_cover]
+    role: agent
+  - state_id: confirm_cover
+    title: Confirm what the policy covers
+    instruction: >-
+      State what the policy covers for this incident and the excess payable, and explain the
+      significant exclusions before the caller decides anything.
+    exit_criteria: [cover_confirmed]
+    required_evidence: [cover_confirmed]
+    transitions: [explain_next_steps]
+    role: agent
+  - state_id: explain_next_steps
+    title: Explain what happens next
+    instruction: Give the claim reference, say an assessor will make contact, and give the complaints route.
+    exit_criteria: [next_steps_explained]
+    required_evidence: [next_steps_explained]
+    transitions: []
+    role: agent

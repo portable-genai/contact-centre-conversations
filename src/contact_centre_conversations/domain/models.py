@@ -25,6 +25,9 @@ from .kernel import Citation, Severity
 from .modes import ContactMode
 
 __all__ = [
+    "AUDIENCE_PUBLIC",
+    "AUDIENCE_INTERNAL",
+    "AUDIENCES",
     "ActionCall",
     "ActionOutcome",
     "ActionSpec",
@@ -67,6 +70,16 @@ class ContactChannel(LenientStrEnum):
 
     VOICE = "voice"
     CHAT = "chat"
+
+
+#: Written for the customer: publishable wording a person may be told and could look up.
+AUDIENCE_PUBLIC = "public"
+#: Written for staff: handling rules, thresholds and internal procedure. Never quoted outward.
+#: It is the DEFAULT for a passage that does not say, because a corpus row nobody classified is
+#: the one to keep inside, and the loader refuses such a row anyway.
+AUDIENCE_INTERNAL = "internal"
+#: Every audience a passage may declare. An unknown value is a corpus error, not a third policy.
+AUDIENCES: tuple[str, ...] = (AUDIENCE_PUBLIC, AUDIENCE_INTERNAL)
 
 
 class GateOutcome(LenientStrEnum):
@@ -127,17 +140,33 @@ class HandoffTrigger(LenientStrEnum):
 # --------------------------------------------------------------------------------------- #
 @dataclass(frozen=True, slots=True)
 class ContactRef:
-    """Identity of one contact: who it belongs to, where it runs, and under which mode."""
+    """Identity of one contact: who it belongs to, where it runs, and under which mode.
+
+    ``vertical`` is the line of business the contact is being handled under, and it is a
+    REQUIRED field with no default. A market alone does not select a policy: a bank and an
+    insurer both operate in SG, their procedures and disclosures are different reviewed
+    artifacts, and packs are selected by ``(market, vertical)``. A default here would pick one
+    line of business for a contact nobody classified, which is the silent-shadowing failure the
+    pack key exists to prevent.
+    """
 
     contact_id: str
     tenant: str
     market: str
     locale: str
+    vertical: str
     mode: ContactMode
     channel: ContactChannel = ContactChannel.VOICE
+    #: WHO this contact is about: the party whose records may be reached on it. Empty means
+    #: nobody has been identified yet, which is a real state and not a missing value: a contact
+    #: begins before anyone is verified. An unidentified party owns nothing, so every ownership
+    #: check fails closed until the channel fills this in. Note that this records who the
+    #: channel SAYS it is speaking to; authenticating that claim on the customer-facing channel
+    #: is a separate concern and is not solved here.
+    party_ref: str = ""
 
     def __post_init__(self) -> None:
-        for name in ("contact_id", "tenant", "market", "locale"):
+        for name in ("contact_id", "tenant", "market", "locale", "vertical"):
             if not str(getattr(self, name)).strip():
                 raise ValueError(f"ContactRef.{name} must not be empty")
 
@@ -296,11 +325,18 @@ class RetrievalQuery:
 
 @dataclass(frozen=True, slots=True)
 class RetrievedPassage:
-    """Cited passages out. Every passage carries the citation a claim will be traced through."""
+    """Cited passages out. Every passage carries the citation a claim will be traced through.
+
+    ``audience`` says who the passage was written FOR. A knowledge base serving a contact centre
+    holds both halves: what a customer may be told, and how staff are meant to handle it. They
+    read alike and they are not alike, so which mode may ground a reply in which passage is a
+    property of the passage rather than a matter of phrasing the prompt carefully.
+    """
 
     text: str
     citation: Citation
     score: float = 0.0
+    audience: str = AUDIENCE_INTERNAL
 
 
 @dataclass(frozen=True, slots=True)
@@ -365,13 +401,22 @@ class PolicyVerdict:
 # --------------------------------------------------------------------------------------- #
 @dataclass(frozen=True, slots=True)
 class ParameterSpec:
-    """One parameter of an action, as the catalog declares it."""
+    """One parameter of an action, as the catalog declares it.
+
+    ``binds_to_party`` says the value NAMES A RECORD somebody owns, so the caller must be shown
+    to own it before the action runs. A pattern proves shape and nothing else: ``[0-9]{4}``
+    cannot tell one customer's card from another's, and an allowed intent plus four well-formed
+    digits was enough to read a stranger's balance.
+    """
 
     name: str
     kind: str = "string"
     required: bool = True
     #: An anchored regular expression the value must match in full. Empty means no constraint.
     pattern: str = ""
+    #: Does this value name a record a party owns? Required in the pack, for the reason
+    #: ``consequential`` is required on actions: a silent default is how it gets forgotten.
+    binds_to_party: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -391,11 +436,19 @@ class ActionSpec:
 
 @dataclass(frozen=True, slots=True)
 class ActionCall:
-    """A validated request to execute one action on behalf of one contact."""
+    """A validated request to execute one action on behalf of one contact.
+
+    ``vertical`` travels with the call because the catalog is scoped by it: two lines of
+    business may declare the same ``action_id`` and mean different things by it, so the
+    executor must be told which catalog the caller was reading.
+    """
 
     action_id: str
     contact_id: str
     tenant: str
+    vertical: str
+    #: The party the call is made on behalf of. Empty means unidentified, which owns nothing.
+    party_ref: str = ""
     parameters: Mapping[str, str] = field(default_factory=dict)
 
 

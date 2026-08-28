@@ -50,8 +50,8 @@ class SpyToolCatalog:
         self._inner = LocalFixtureToolCatalog(settings)  # type: ignore[arg-type]
         self.executed: list[ActionCall] = []
 
-    def describe(self, action_id: str) -> ActionSpec | None:
-        return self._inner.describe(action_id)
+    def describe(self, action_id: str, vertical: str) -> ActionSpec | None:
+        return self._inner.describe(action_id, vertical)
 
     def execute(self, call: ActionCall) -> ActionOutcome:
         self.executed.append(call)
@@ -152,6 +152,7 @@ def test_the_adapter_itself_refuses_a_consequential_action_as_a_second_wall() ->
                 action_id="block_card",
                 contact_id=sample_cases.SELF_SERVICE_CONTACT_ID,
                 tenant=sample_cases.TENANT,
+                vertical=sample_cases.VERTICAL,
                 parameters={"card_last4": "4321"},
             )
         )
@@ -161,7 +162,7 @@ def test_the_adapter_itself_refuses_a_consequential_action_as_a_second_wall() ->
 # Parameter validation against the catalog schema
 # --------------------------------------------------------------------------- #
 def _spec() -> ActionSpec:
-    spec = SHIPPED_PACKS.action_spec("read_card_balance")
+    spec = SHIPPED_PACKS.action_spec("read_card_balance", sample_cases.VERTICAL)
     assert spec is not None
     return spec
 
@@ -189,6 +190,7 @@ def test_a_denied_gate_prepares_no_action_at_all() -> None:
             action_id="read_card_balance",
             contact_id="c1",
             tenant=sample_cases.TENANT,
+            vertical=sample_cases.VERTICAL,
             parameters={"card_last4": "4321"},
         ),
         _verdict(GateOutcome.DENY, "read_card_balance"),

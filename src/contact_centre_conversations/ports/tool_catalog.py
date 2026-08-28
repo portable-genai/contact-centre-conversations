@@ -19,8 +19,12 @@ from ..domain.models import ActionCall, ActionOutcome, ActionSpec
 
 @runtime_checkable
 class ToolCatalogPort(Protocol):
-    def describe(self, action_id: str) -> ActionSpec | None:
-        """The catalog entry for ``action_id``, or None when the catalog does not declare it."""
+    def describe(self, action_id: str, vertical: str) -> ActionSpec | None:
+        """The entry ``vertical``'s catalog gives ``action_id``, or None when it declares none.
+
+        Scoped by vertical because the catalog is: a banking catalog must not answer for an
+        insurance contact just because both declare an action of that name.
+        """
         ...
 
     def execute(self, call: ActionCall) -> ActionOutcome:

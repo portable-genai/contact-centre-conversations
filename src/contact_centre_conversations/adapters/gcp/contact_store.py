@@ -58,6 +58,7 @@ class FirestoreContactStore:
                 "tenant": contact.tenant,
                 "market": contact.market,
                 "locale": contact.locale,
+                "vertical": contact.vertical,
                 "mode": contact.mode.value,
                 "channel": contact.channel.value,
             },
@@ -102,6 +103,7 @@ class FirestoreContactStore:
             tenant=tenant,
             market=str(row.get("market", "")),
             locale=str(row.get("locale", "")),
+            vertical=str(row.get("vertical", "")),
             mode=ContactMode(str(row.get("mode", ContactMode.AGENT_ASSIST.value))),
             channel=ContactChannel(str(row.get("channel", ContactChannel.VOICE.value))),
         )

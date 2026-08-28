@@ -69,6 +69,9 @@ packs_path: ${CONTACT_PACKS_PATH:-config/packs}
 # The offline knowledge-base corpus and the scripted contact streams. Both are fixtures for the
 # `local` family; the managed family reaches Hrz2 and the real recogniser instead.
 kb_path: ${CONTACT_KB_PATH:-config/kb/passages.jsonl}
+# Which party owns which record, for the ownership check that stops one customer reading
+# another's. A fictional fixture offline; the client's system of record when deployed.
+parties_path: ${CONTACT_PARTIES_PATH:-config/parties/records.jsonl}
 streams_path: ${CONTACT_STREAMS_PATH:-config/streams}
 
 # Sibling services the platform-remote adapters call. Empty means unconfigured, and an
@@ -76,6 +79,7 @@ streams_path: ${CONTACT_STREAMS_PATH:-config/streams}
 retrieval_url: ${HRZ_KNOWLEDGE_BASE_URL:-}
 guardrail_url: ${HRZ_GUARDRAIL_URL:-}
 tool_catalog_url: ${CONTACT_TOOL_CATALOG_URL:-}
+party_records_url: ${CONTACT_PARTY_RECORDS_URL:-}
 
 # The managed model the generation adapter asks for. Configuration, never a literal in a module.
 model: ${CONTACT_MODEL:-gemini-3.5-flash}
@@ -115,6 +119,7 @@ voice:
   contact_header: X-Contact-Id
   default_market: ${CONTACT_VOICE_MARKET:-SG}
   default_locale: ${CONTACT_VOICE_LOCALE:-en-SG}
+  default_vertical: ${CONTACT_VOICE_VERTICAL:-retail_banking}
   # DNIS routing: dialled number -> tenant/market/locale. The tenant a call lands in is
   # decided here or by the `tenant` default above, never by anything the caller sent.
   dnis: {}
@@ -171,6 +176,13 @@ adapters:
     local: contact_centre_conversations.adapters.local.tool_catalog:LocalFixtureToolCatalog
     gcp: contact_centre_conversations.adapters.gcp.tool_catalog:McpToolCatalog
     onprem: contact_centre_conversations.adapters.onprem.tool_catalog:OnPremToolCatalog
+
+  # Record ownership, kept separate from the catalog: the catalog says an action exists and
+  # what shape its parameters take, this says whether THIS caller may name THAT record.
+  party_records:
+    local: contact_centre_conversations.adapters.local.party_records:LocalFixturePartyRecords
+    gcp: contact_centre_conversations.adapters.gcp.party_records:PlatformPartyRecords
+    onprem: contact_centre_conversations.adapters.onprem.party_records:OnPremPartyRecords
   contact_store:
     local: contact_centre_conversations.adapters.local.contact_store:LocalContactStore
     gcp: contact_centre_conversations.adapters.gcp.contact_store:FirestoreContactStore

@@ -37,6 +37,7 @@ from .observability import (
     ObservabilityTracerPort,
     TokenUsage,
 )
+from .party_records import PartyRecordsPort
 from .retrieval import RetrievalPort
 from .review_router import ReviewRouterPort
 from .speech import DiarizationPort, SpeechToTextPort, TextToSpeechPort
@@ -52,6 +53,7 @@ PORT_PROTOCOLS: dict[str, type] = {
     "generation": GenerationPort,
     "guardrail": GuardrailPort,
     "identity": IdentityPort,
+    "party_records": PartyRecordsPort,
     "retrieval": RetrievalPort,
     "review_router": ReviewRouterPort,
     "speech_to_text": SpeechToTextPort,
@@ -81,6 +83,7 @@ __all__ = [
     "GuardrailPort",
     "IdentityPort",
     "VoiceEnginePort",
+    "PartyRecordsPort",
     "RetrievalPort",
     "ReviewRouterPort",
     "SpeechToTextPort",

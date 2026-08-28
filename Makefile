@@ -54,6 +54,7 @@ test-integration:
 
 eval:
 	python eval/run_eval.py
+	python eval/run_narrative_eval.py
 
 # The full OFFLINE gate. It is deliberately network-free, so it runs on a plane and in a
 # no-egress environment; the dependency audit needs a vulnerability feed and therefore lives in
@@ -106,8 +107,12 @@ portability:
 	$(PYRUN) scripts/portability_demo.py
 
 # Relative links resolve, code fences close, no em-dash or en-dash in shipped prose.
+evals-doc:
+	$(PYRUN) scripts/render_evals_doc.py
+
 docs-check:
 	$(PYRUN) scripts/check_docs_links.py
+	$(PYRUN) scripts/render_evals_doc.py --check
 
 # The deploy posture, checked WITHOUT a cloud. `-backend=false` skips the state bucket, so this
 # needs no credentials, no project and no remote state; `terraform test` runs against a mocked
@@ -146,3 +151,11 @@ ui-dev:
 # halves agree, in either direction.
 drop-ui:
 	$(PYRUN) scripts/drop_ui.py
+
+# The reviewer's report. Deliberately OUTSIDE `make gate`, like the demo surface: the gate's
+# contract is console output plus an exit status, and a browsable report is a separate job.
+# `run_eval.py` emits the JSON and `render_eval_report.py` only paints it, so the report cannot
+# show one thing while the eval computed another.
+eval-report:
+	$(PYRUN) eval/run_eval.py --emit out/evals/report.json
+	$(PYRUN) scripts/render_eval_report.py out/evals/report.json out/evals

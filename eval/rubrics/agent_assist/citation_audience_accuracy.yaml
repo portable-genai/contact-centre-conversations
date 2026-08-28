@@ -1,0 +1,22 @@
+# Scored by: eval/run_eval.py::run_agent_assist against the CORPUS FILE, not the pipeline's own
+# citations. Agent-assist may cite an internal handling note, which is the deliberate asymmetry
+# with the customer-facing mode; it may not cite a passage from another market or another line
+# of business, and it may not cite one that names no published reference.
+metric: citation_audience_accuracy
+description: >
+  Fraction of citations attached to an agent-facing suggestion that resolve to a real corpus
+  passage in the contact's own market and vertical, carrying a source_ref a reader could follow.
+threshold: 1.0
+direction: maximize
+applies_to:
+  - EvalReport.results[citation_audience_accuracy]
+criteria:
+  - id: resolves_to_a_passage
+    description: The cited id exists in the corpus and names a source_ref.
+    weight: 0.5
+  - id: in_partition
+    description: The passage belongs to the contact's market and vertical.
+    weight: 0.5
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"

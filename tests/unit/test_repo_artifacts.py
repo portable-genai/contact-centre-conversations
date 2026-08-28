@@ -43,6 +43,7 @@ REQUIRED_ARTIFACTS: dict[str, str] = {
     ".github/dependabot.yml": "an ecosystem nobody watches is an unpinned dependency",
     ".github/workflows/ci.yaml": "the gate has to run somewhere",
     ".github/workflows/eval-gate.yaml": "an eval regression must block a merge on its own name",
+    "docs/evals.md": "the eval, addressed to whoever decides what this service may say",
     ".github/workflows/demo-gate.yaml": "a demo nobody runs unattended is a demo that has rotted",
     "scripts/README.md": "the demo surface needs an index, or nobody finds the entry point",
     "scripts/demo.py": "the demo is code, not a deck",

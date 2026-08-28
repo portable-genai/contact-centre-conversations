@@ -124,6 +124,7 @@ def _contact(contact_id: str = "voice-test-0001") -> ContactRef:
         tenant=sample_cases.TENANT,
         market=sample_cases.MARKET,
         locale=sample_cases.LOCALE,
+        vertical=sample_cases.VERTICAL,
         mode=ContactMode.SELF_SERVICE,
         channel=ContactChannel.VOICE,
     )

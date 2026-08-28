@@ -17,16 +17,22 @@ ways it can fail:
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from speech_lexicon_kit import normalise
 
 from ...config import Settings
 from ...domain.kernel import Citation
-from ...domain.models import RetrievalQuery, RetrievedPassage
+from ...domain.models import AUDIENCES, RetrievalQuery, RetrievedPassage
 
 #: Locale used to normalise the corpus and the query when the query names none.
 _FALLBACK_LOCALE = "en"
+
+#: Runs of script written without spaces between words: CJK ideographs, kana and Hangul.
+#: Text in these scripts yields one whitespace token per sentence, so it is scored by
+#: character bigrams instead. Latin text never matches, so nothing else changes.
+_UNSPACED = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]{2,}")
 
 
 class LocalFixtureRetrievalAdapter:
@@ -56,12 +62,59 @@ class LocalFixtureRetrievalAdapter:
                 f"knowledge-base corpus {self._path} is empty: an empty corpus is a broken "
                 "deployment, and returning no passages would look like a well-grounded silence"
             )
+        for row in rows:
+            self._check_classified(row)
         return rows
+
+    def _check_classified(self, row: dict[str, str]) -> None:
+        """Every passage must say who it was written for, and where to find it.
+
+        Refused at LOAD rather than filtered optimistically at query time. The filter treats a
+        key the row does not carry as excluding nothing, so an unclassified passage would match
+        a public-only query and be quoted to a customer: the very outcome the classification
+        exists to prevent. A corpus nobody classified must stop the deployment, not narrow it.
+        """
+        passage = row.get("passage_id", "(unnamed)")
+        audience = row.get("audience", "")
+        if audience not in AUDIENCES:
+            raise RuntimeError(
+                f"knowledge-base passage {passage!r} declares audience {audience!r}; it must be "
+                f"one of {list(AUDIENCES)}. A passage nobody classified would match a "
+                "customer-facing query, because a filter cannot exclude on a field that is absent."
+            )
+        if not row.get("vertical", "").strip():
+            raise RuntimeError(
+                f"knowledge-base passage {passage!r} names no vertical. The filter cannot exclude "
+                "on a field that is absent, so an unclassified passage would answer for every "
+                "line of business at once: an insurer's wording quoted at a bank's customer."
+            )
+        if not row.get("source_ref", "").strip():
+            raise RuntimeError(
+                f"knowledge-base passage {passage!r} names no source_ref. A citation that "
+                "resolves only inside the bank is provenance for the bank, not for the person "
+                "being told something."
+            )
 
     @staticmethod
     def _terms(text: str, locale: str) -> set[str]:
+        """Comparable units of ``text``, for scripts that space their words and scripts that do not.
+
+        Whitespace tokens carry the Latin-script markets. They carry nothing at all in Japanese,
+        which writes without spaces: a whole sentence folds to ONE token, so term overlap is
+        empty unless two passages are character-identical. A stand-in that structurally cannot
+        rank one of the markets this service claims to serve is not standing in for anything, it
+        is hiding the market, and every JP contact would have looked like a well-grounded silence.
+
+        So a run of unspaced script also contributes character bigrams. Crude, deterministic, and
+        enough for a fixture to rank: adjacent-character overlap is the standard cheap stand-in
+        for CJK segmentation, and nothing here pretends to be a tokeniser. Latin text produces no
+        such runs, so the SG corpus scores exactly as it did before.
+        """
         folded = normalise(text, locale).text
-        return {token for token in folded.split() if len(token) > 2}
+        terms = {token for token in folded.split() if len(token) > 2}
+        for run in _UNSPACED.findall(folded):
+            terms |= {run[index : index + 2] for index in range(len(run) - 1)}
+        return terms
 
     def retrieve(self, query: RetrievalQuery) -> list[RetrievedPassage]:
         locale = query.filters.get("locale") or _FALLBACK_LOCALE
@@ -80,8 +133,10 @@ class LocalFixtureRetrievalAdapter:
                     source_id=row["passage_id"],
                     title=row.get("title", row["passage_id"]),
                     snippet=row["text"][:120],
+                    source_ref=row["source_ref"],
                 ),
                 score=score,
+                audience=row["audience"],
             )
             scored.append((score, row["passage_id"], passage))
         # Sorted by score descending then id ascending: a stable order is what makes the

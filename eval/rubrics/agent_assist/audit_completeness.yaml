@@ -1,0 +1,24 @@
+# Scored by: eval/run_eval.py::run_agent_assist against the SCENARIOS' own turn counts, never
+# the pipeline's bookkeeping. Rule R8 lives here: an escalation that set a flag and routed
+# nowhere escalated to nobody, so `review_ref` is what is checked, not the flag.
+metric: audit_completeness
+description: >
+  Whether every accepted turn produced exactly one mode-tagged audit record, the hash chain
+  verifies after the run, and every escalated result carries a routing reference.
+threshold: 1.0
+direction: maximize
+applies_to:
+  - EvalReport.results[audit_completeness]
+criteria:
+  - id: one_record_per_turn
+    description: The mode-tagged record count equals the scenarios' own turn count.
+    weight: 0.4
+  - id: chain_verifies
+    description: The hash chain verifies after the run.
+    weight: 0.3
+  - id: escalation_routed
+    description: Every result requiring review carries a non-empty review_ref.
+    weight: 0.3
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"

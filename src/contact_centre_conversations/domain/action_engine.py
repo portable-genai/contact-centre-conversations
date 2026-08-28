@@ -1,13 +1,18 @@
 """Action execution with maker-checker: the parameter check, and the line nothing crosses.
 
-Three separate decisions, in this order, and the order is the control:
+Four separate decisions, in this order, and the order is the control:
 
 1. **The gate decided WHICH action** may be requested (``policy_gate``). This module never
    revisits that.
 2. **This module validates the PARAMETERS** against the catalog's declared schema. A parameter
    the catalog did not declare, a required one that is absent, or a value that fails its
    declared pattern all stop the call here.
-3. **The catalog decides whether it may EXECUTE.** An action whose catalog metadata marks it
+3. **Ownership decides WHOSE record was named.** A pattern proves shape and nothing else:
+   ``[0-9]{4}`` cannot tell one customer's card from another's, and tenant partition cannot
+   either, because two customers of one bank are one tenant. So every parameter the catalog
+   marks ``binds_to_party`` is checked against the party the contact is about, and a value
+   naming somebody else's record refuses and escalates.
+4. **The catalog decides whether it may EXECUTE.** An action whose catalog metadata marks it
    ``consequential`` NEVER auto-executes, whatever the gate said, whoever asked, and however
    confident anything was. It yields a pending-review case and ZERO calls to the executor port.
 
@@ -26,11 +31,19 @@ from datetime import datetime
 from .models import ActionCall, ActionOutcome, ActionSpec, GateOutcome, PolicyVerdict
 
 __all__ = [
+    "PARAMETER_NOT_OWNED",
     "ActionValidationError",
     "ExecutorPort",
     "decide",
+    "unowned_parameters",
     "validate_parameters",
 ]
+
+#: The refusal code for a parameter naming a record the caller was not shown to own. It is a
+#: distinct code rather than a flavour of "invalid parameter" because the two are different
+#: events: a malformed value is a mistake, and a well-formed value naming somebody else's
+#: record is a request for another customer's data, which a human is meant to see.
+PARAMETER_NOT_OWNED = "parameter_not_owned"
 
 
 class ActionValidationError(ValueError):
@@ -79,12 +92,36 @@ def validate_parameters(spec: ActionSpec, parameters: Mapping[str, str]) -> dict
     return validated
 
 
+def unowned_parameters(
+    spec: ActionSpec,
+    validated: Mapping[str, str],
+    ownership: Mapping[str, bool],
+) -> tuple[str, ...]:
+    """The supplied parameters that name a record the caller was NOT SHOWN to own.
+
+    ``ownership`` is resolved by the caller, one lookup per parameter the catalog declares as
+    binding to a party. A parameter missing from that mapping counts as not owned: "nobody
+    checked" and "checked and it is theirs" must not land in the same branch, and the safe one
+    of the two is the refusal. An adapter that cannot reach its records system raises rather
+    than returning False, so a missing entry here means the caller skipped the lookup.
+    """
+    unowned = [
+        parameter.name
+        for parameter in spec.parameters
+        if parameter.binds_to_party
+        and parameter.name in validated
+        and not ownership.get(parameter.name, False)
+    ]
+    return tuple(sorted(unowned))
+
+
 def decide(
     spec: ActionSpec | None,
     call: ActionCall,
     verdict: PolicyVerdict,
     *,
     as_of: datetime,
+    ownership: Mapping[str, bool] | None = None,
 ) -> tuple[bool, ActionOutcome]:
     """Decide whether ``call`` may execute, WITHOUT executing anything.
 
@@ -110,13 +147,28 @@ def decide(
             requires_human_review=False,
         )
     try:
-        validate_parameters(spec, call.parameters)
+        validated = validate_parameters(spec, call.parameters)
     except ActionValidationError as exc:
         return False, ActionOutcome(
             action_id=spec.action_id,
             executed=False,
             detail=str(exc),
             requires_human_review=False,
+        )
+    # Ownership is checked BEFORE the consequential line. Both refuse, but they refuse for
+    # different reasons and only one of them is about the caller: "this is queued for
+    # maker-checker" tells a reviewer nothing about the fact that somebody asked for another
+    # customer's card, and that is the fact worth surfacing.
+    unowned = unowned_parameters(spec, validated, ownership or {})
+    if unowned:
+        return False, ActionOutcome(
+            action_id=spec.action_id,
+            executed=False,
+            detail=(
+                f"{PARAMETER_NOT_OWNED}: {list(unowned)} name records that "
+                f"{call.party_ref or 'an unidentified party'} was not shown to own"
+            ),
+            requires_human_review=True,
         )
     if spec.consequential:
         return False, ActionOutcome(

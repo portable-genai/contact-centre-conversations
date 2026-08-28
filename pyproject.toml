@@ -39,6 +39,9 @@ dev = [
   "ruff==0.16.3",
   "mypy>=1.10",
   "pytest>=8.2",
+  # Wire-level mocking for the outbound Hrz4 promotion client, so `--mode gate` is covered
+  # offline. No test may need a reachable sibling service or a model server.
+  "respx>=0.21",
   "types-PyYAML>=6.0",
 ]
 # Managed cloud SDKs (lazy-imported by the gcp adapters). NOT installed by the local gate.

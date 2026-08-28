@@ -129,7 +129,13 @@ class ContactKernel:
                 passages=(),
                 detail="the guardrail degraded this turn, so no model or knowledge base was called",
             )
-        query = suggestions.build_query(text, market=contact.market, locale=contact.locale)
+        query = suggestions.build_query(
+            text,
+            market=contact.market,
+            locale=contact.locale,
+            vertical=contact.vertical,
+            mode=mode,
+        )
         try:
             passages = tuple(self._retrieval.retrieve(query))
         except Exception as exc:  # noqa: BLE001 - an unreachable index suppresses, never invents

@@ -29,8 +29,12 @@ class McpToolCatalog:
     def _base(self) -> str:
         return require_base_url(self._settings.tool_catalog_url, what="tool_catalog_url")
 
-    def describe(self, action_id: str) -> ActionSpec | None:
-        payload = post_json(self._base(), "/v1/actions/describe", {"action_id": action_id})
+    def describe(self, action_id: str, vertical: str) -> ActionSpec | None:
+        payload = post_json(
+            self._base(),
+            "/v1/actions/describe",
+            {"action_id": action_id, "vertical": vertical},
+        )
         node = payload.get("action")
         if not isinstance(node, dict):
             return None
@@ -55,7 +59,7 @@ class McpToolCatalog:
         )
 
     def execute(self, call: ActionCall) -> ActionOutcome:
-        spec = self.describe(call.action_id)
+        spec = self.describe(call.action_id, call.vertical)
         if spec is None:
             raise LookupError(f"the remote catalog does not declare action {call.action_id!r}")
         if spec.consequential:
@@ -70,6 +74,7 @@ class McpToolCatalog:
                 "action_id": call.action_id,
                 "contact_id": call.contact_id,
                 "tenant": call.tenant,
+                "vertical": call.vertical,
                 "parameters": dict(call.parameters),
             },
             actor=call.tenant,

@@ -21,6 +21,7 @@ def _turn(text: str, *, index: int = 0, **extra: object) -> dict[str, object]:
         "contact_id": sample_cases.CLEAN_CONTACT_ID,
         "market": sample_cases.MARKET,
         "locale": sample_cases.LOCALE,
+        "vertical": sample_cases.VERTICAL,
         "text": text,
         "index": index,
     }

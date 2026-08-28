@@ -7,6 +7,7 @@
 kind: disclosure
 pack_id: sg-retail-disclosures-v1
 market: SG
+vertical: retail_banking
 jurisdiction: MAS
 locale: en-SG
 

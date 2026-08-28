@@ -1,0 +1,58 @@
+# Disclosure pack: Singapore general-insurance contact-centre disclosures (FICTIONAL policy).
+#
+# THIS SHAPE IS SHARED WITH E3 (conversation-qa-scorecard), which already carries an authored
+# general-insurance pack for another market. The live copilot reminds an agent that a window is
+# open; the post-contact scorecard grades whether the reminder worked. Both read THIS artifact.
+#
+# The regulator named in `jurisdiction` is real. The wording, the windows and the accepted
+# paraphrases are adopter-owned policy, invented for this fixture, and are not quotations.
+kind: disclosure
+pack_id: sg-insurance-disclosures-v1
+market: SG
+vertical: general_insurance
+jurisdiction: MAS
+locale: en-SG
+
+disclosures:
+  - disclosure_id: recording_notice
+    required_phrase: this call is being recorded
+    paraphrases:
+      - we record all calls
+      - the call is recorded
+    trigger_event: contact_start
+    within_ms: 45000
+    severity: high
+    reminder: Give the call-recording notice now; the window closes 45 seconds in.
+    role: agent
+  - disclosure_id: data_use_notice
+    required_phrase: we use your information to
+    paraphrases:
+      - your personal data is used to
+    trigger_event: procedure_state:verify_identity
+    within_ms: 60000
+    severity: medium
+    reminder: State the purpose of the personal data you are about to collect.
+    role: agent
+  # CRITICAL, and the reason this vertical exists in the eval at all: "am I covered" is the
+  # highest-stakes question an insurance contact centre is asked, and an answer that names the
+  # cover without naming what is excluded is how a policy gets mis-sold.
+  - disclosure_id: exclusions_notice
+    required_phrase: significant exclusions
+    paraphrases:
+      - what is not covered
+      - this policy does not cover
+    trigger_event: lexicon:cover_confirmed
+    within_ms: 120000
+    severity: critical
+    reminder: Explain the significant exclusions before the caller relies on the cover.
+    role: agent
+  - disclosure_id: complaints_route_notice
+    required_phrase: you can refer the matter to
+    paraphrases:
+      - our internal dispute resolution
+      - you may escalate your complaint
+    trigger_event: lexicon:next_steps_explained
+    within_ms: 120000
+    severity: high
+    reminder: Give the complaints route before closing the contact.
+    role: agent

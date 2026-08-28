@@ -1,0 +1,42 @@
+# Disclosure pack: Japan retail contact-centre disclosures (FICTIONAL policy).
+#
+# The INSTRUMENTS named in `jurisdiction` are real regulators; the wording, the timing windows
+# and the accepted paraphrases here are adopter-owned policy and are invented for this fixture.
+# Nothing in this file is legal advice and no phrase is a quotation.
+kind: disclosure
+pack_id: jp-retail-disclosures-v1
+market: JP
+vertical: retail_banking
+jurisdiction: FSA
+locale: ja-JP
+
+disclosures:
+  - disclosure_id: recording_notice
+    required_phrase: この通話は録音されています
+    paraphrases:
+      - 通話を録音しております
+      - 品質向上のため録音しています
+    trigger_event: contact_start
+    within_ms: 45000
+    severity: high
+    reminder: >-
+      Give the call-recording notice now; the window closes 45 seconds after the call starts.
+    role: agent
+  - disclosure_id: data_use_notice
+    required_phrase: お客様の情報は
+    paraphrases:
+      - お客様の個人情報は
+    trigger_event: procedure_state:verify_identity
+    within_ms: 60000
+    severity: medium
+    reminder: State the purpose of the personal data you are about to collect.
+    role: agent
+  - disclosure_id: dispute_rights_notice
+    required_phrase: 異議を申し立てる権利
+    paraphrases:
+      - 書面による異議申立て
+    trigger_event: lexicon:dispute_details_taken
+    within_ms: 120000
+    severity: high
+    reminder: Tell the caller their dispute rights and the written route.
+    role: agent

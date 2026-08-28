@@ -32,9 +32,9 @@ from tests.conftest import SHIPPED_PACKS
 from tests.fixtures import sample_cases
 
 _AS_OF = datetime(2026, 8, 8, 9, 0, tzinfo=UTC)
-_PROCEDURE = SHIPPED_PACKS.procedure_for("SG")
-_DISCLOSURES = SHIPPED_PACKS.disclosure_for("SG")
-_ALLOWLIST = SHIPPED_PACKS.allowlist_for("demo-bank", "SG")
+_PROCEDURE = SHIPPED_PACKS.procedure_for("SG", sample_cases.VERTICAL)
+_DISCLOSURES = SHIPPED_PACKS.disclosure_for("SG", sample_cases.VERTICAL)
+_ALLOWLIST = SHIPPED_PACKS.allowlist_for("demo-bank", "SG", sample_cases.VERTICAL)
 assert _PROCEDURE is not None and _DISCLOSURES is not None and _ALLOWLIST is not None
 
 
@@ -270,12 +270,13 @@ def test_an_empty_allowlist_refuses_before_anything_else() -> None:
                 "kind": "allowlist",
                 "tenant": "demo-bank",
                 "market": "SG",
+                "vertical": "retail_banking",
                 "locale": "en-SG",
                 "intents": [],
                 "actions": [],
             }
         ]
-    ).allowlist_for("demo-bank", "SG")
+    ).allowlist_for("demo-bank", "SG", sample_cases.VERTICAL)
     verdict = _evaluate(empty, intent=IntentMatch(intent_id="card_balance", confidence=1.0))
     assert verdict.outcome is GateOutcome.DENY  # type: ignore[attr-defined]
     assert verdict.reasons[0].code == policy_gate.EMPTY_ALLOWLIST  # type: ignore[attr-defined]
@@ -301,7 +302,7 @@ def test_a_consequential_action_composes_to_review_not_allow() -> None:
         _ALLOWLIST,
         intent=IntentMatch(intent_id="report_lost_card", confidence=1.0),
         requested_action="block_card",
-        action_spec=SHIPPED_PACKS.action_spec("block_card"),
+        action_spec=SHIPPED_PACKS.action_spec("block_card", sample_cases.VERTICAL),
     )
     assert verdict.outcome is GateOutcome.REVIEW  # type: ignore[attr-defined]
     assert policy_gate.ACTION_CONSEQUENTIAL in {r.code for r in verdict.reasons}  # type: ignore[attr-defined]
@@ -312,7 +313,7 @@ def test_an_action_the_intent_may_not_reach_denies() -> None:
         _ALLOWLIST,
         intent=IntentMatch(intent_id="card_balance", confidence=1.0),
         requested_action="raise_chargeback",
-        action_spec=SHIPPED_PACKS.action_spec("raise_chargeback"),
+        action_spec=SHIPPED_PACKS.action_spec("raise_chargeback", sample_cases.VERTICAL),
     )
     assert verdict.outcome is GateOutcome.DENY  # type: ignore[attr-defined]
     assert policy_gate.ACTION_NOT_FOR_INTENT in {r.code for r in verdict.reasons}  # type: ignore[attr-defined]
@@ -366,6 +367,7 @@ def test_a_disclosure_triggering_on_a_state_nobody_defines_is_refused_at_load() 
                     "kind": "disclosure",
                     "pack_id": "broken-v1",
                     "market": "SG",
+                    "vertical": "retail_banking",
                     "jurisdiction": "MAS",
                     "locale": "en-SG",
                     "disclosures": [

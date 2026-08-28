@@ -71,6 +71,7 @@ def local_settings(**overrides: Any) -> Settings:
         "audit_path": ":memory:",
         "tenant": sample_cases.TENANT,
         "kb_path": str(REPO_ROOT / "config" / "kb" / "passages.jsonl"),
+        "parties_path": str(REPO_ROOT / "config" / "parties" / "records.jsonl"),
         "streams_path": str(REPO_ROOT / "config" / "streams"),
         "packs_path": str(REPO_ROOT / "config" / "packs"),
         "packs": SHIPPED_PACKS,

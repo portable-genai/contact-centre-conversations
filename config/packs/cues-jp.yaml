@@ -1,0 +1,22 @@
+# Cue pack: Japan retail banking (FICTIONAL policy).
+#
+# Two customer-side phrase lists the deterministic handoff triggers read. They are policy: a
+# bank decides what counts as a vulnerability cue in its market, so they are a pack rather than
+# a constant somebody edits in Python. Matching is exact-phrase, so a paraphrase nobody listed
+# does NOT match: these lists are a floor and never a claim of complete coverage.
+kind: cues
+pack_id: jp-customer-cues-v1
+market: JP
+vertical: retail_banking
+locale: ja-JP
+
+escalation:
+  - 担当者と話したい
+  - 人と話したいです
+  - オペレーターにつないでください
+
+vulnerability:
+  - 支払いが困難です
+  - 失業しました
+  - 詐欺にあいました
+  - 入院しています

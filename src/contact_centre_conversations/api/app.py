@@ -133,6 +133,16 @@ def _submission(request: TurnRequest, *, mode: ContactMode, principal: Principal
     The tenant comes from the principal, never from the body. A request that named its own
     tenant would be a caller choosing which partition to read, which is the whole of the
     cross-tenant defect this service answers 403 to.
+
+    ``party_ref`` is left EMPTY here, and that is the honest state rather than an omission. It
+    says WHOSE records may be reached, so a body that named it would be a caller asserting whose
+    data to return, which is the cross-tenant defect again one level down and worse: two
+    customers of one bank are one tenant, so nothing else would catch it. This service cannot
+    authenticate the customer on the HTTP path today (the principal is a staff identity, and on
+    the voice path the tenant comes from a dialled number), so it names nobody. An unidentified
+    party owns nothing, so every action whose parameters bind to a party refuses here until a
+    real customer-identity source exists. Operator-driven surfaces that HAVE verified the
+    customer say so explicitly: the CLI's ``--party-ref`` and the agent tools' ``party_ref``.
     """
     return TurnSubmission(
         contact=ContactRef(
@@ -140,6 +150,7 @@ def _submission(request: TurnRequest, *, mode: ContactMode, principal: Principal
             tenant=principal.tenant or _container().settings.tenant,
             market=request.market,
             locale=request.locale,
+            vertical=request.vertical,
             mode=mode,
             channel=ContactChannel(request.channel),
         ),

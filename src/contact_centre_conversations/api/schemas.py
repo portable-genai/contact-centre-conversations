@@ -23,6 +23,10 @@ class CitationModel(BaseModel):
     source_id: str
     title: str
     snippet: str = ""
+    #: Where a reader can actually look this up. ``source_id`` is this deployment's internal
+    #: handle, which is provenance for the bank; this is the half the person being told
+    #: something needs. Empty for provenance naming a pack rather than a published document.
+    source_ref: str = ""
 
 
 class TurnRequest(BaseModel):
@@ -31,6 +35,9 @@ class TurnRequest(BaseModel):
     contact_id: str
     market: str
     locale: str
+    #: The line of business this contact is handled under. Required, and carried like the
+    #: market: it selects which reviewed packs apply, and no default can guess it.
+    vertical: str
     text: str
     index: int = 0
     speaker_id: str = "customer"

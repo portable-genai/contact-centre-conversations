@@ -84,6 +84,7 @@ _TURN_BODY: dict[str, object] = {
     "contact_id": "exposure-probe",
     "market": "SG",
     "locale": "en-SG",
+    "vertical": "retail_banking",
     "text": "Thank you for calling. This call is being recorded.",
     "speaker_id": "agent-1",
     "role": "agent",

@@ -28,6 +28,9 @@ __all__ = [
     "IN_SCOPE_TURN",
     "LOCALE",
     "MARKET",
+    "VERTICAL",
+    "PARTY_REF",
+    "OTHER_PARTY_REF",
     "MISSED_DISCLOSURE_CONTACT_ID",
     "OPENING_TURN",
     "OTHER_TENANT",
@@ -50,6 +53,15 @@ OTHER_TENANT = "rival-bank"
 
 MARKET = "SG"
 LOCALE = "en-SG"
+#: The line of business the shipped packs carry. Selecting a pack needs it alongside market.
+VERTICAL = "retail_banking"
+
+#: WHO the contact is about. The ownership fixture in `config/parties/records.jsonl` gives
+#: this party card 4321 under `demo-bank`, and gives 9876 to a DIFFERENT customer of the
+#: SAME tenant, which is the pair that makes cross-customer exposure testable at all.
+PARTY_REF = "party-sg-0001"
+#: A second customer of the same tenant. Tenant partition cannot tell these two apart.
+OTHER_PARTY_REF = "party-sg-0002"
 
 #: The scripted stream ids the offline channel and speech adapters replay. Each is a file under
 #: ``config/streams/``; the names are shared so a test and the demo drive the same contact.
@@ -62,6 +74,8 @@ AGENT_CONTACT = ContactRef(
     tenant=TENANT,
     market=MARKET,
     locale=LOCALE,
+    vertical=VERTICAL,
+    party_ref=PARTY_REF,
     mode=ContactMode.AGENT_ASSIST,
 )
 
@@ -70,6 +84,8 @@ CUSTOMER_CONTACT = ContactRef(
     tenant=TENANT,
     market=MARKET,
     locale=LOCALE,
+    vertical=VERTICAL,
+    party_ref=PARTY_REF,
     mode=ContactMode.SELF_SERVICE,
 )
 

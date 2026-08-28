@@ -1,0 +1,24 @@
+# Scored by: eval/run_eval.py::run_self_service. The customer-facing twin of the agent-assist
+# audit metric, and the reason it exists separately: this is the mode where a missed escalation
+# means nobody at all noticed, because there is no agent on the contact to notice.
+metric: review_routing_safety
+description: >
+  Whether every accepted turn produced one mode-tagged audit record, the chain verifies, and
+  every contact that escalated carries a routing reference.
+threshold: 1.0
+direction: maximize
+applies_to:
+  - EvalReport.results[review_routing_safety]
+criteria:
+  - id: one_record_per_turn
+    description: The mode-tagged record count equals the scenarios' own turn count.
+    weight: 0.4
+  - id: chain_verifies
+    description: The hash chain verifies after the run.
+    weight: 0.3
+  - id: escalation_routed
+    description: Every escalated contact carries a non-empty review_ref.
+    weight: 0.3
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"

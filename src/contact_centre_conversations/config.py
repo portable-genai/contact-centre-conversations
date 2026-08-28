@@ -59,6 +59,7 @@ from .ports.generation import GenerationPort
 from .ports.guardrail import GuardrailPort
 from .ports.identity import CLIENT_ASSERTED, declared_end_user_auth
 from .ports.observability import EvaluationGatePort, ObservabilityTracerPort
+from .ports.party_records import PartyRecordsPort
 from .ports.retrieval import RetrievalPort
 from .ports.review_router import ReviewRouterPort
 from .ports.speech import DiarizationPort, SpeechToTextPort, TextToSpeechPort
@@ -265,6 +266,15 @@ DEFAULT_BINDINGS: dict[str, dict[str, str]] = {
         "gcp": f"{_PKG}.adapters.gcp.tool_catalog:McpToolCatalog",
         "onprem": f"{_PKG}.adapters.onprem.tool_catalog:OnPremToolCatalog",
     },
+    # Who owns the record a parameter names. Separate from the catalog on purpose: the catalog
+    # says an action EXISTS and what shape its parameters take, and this says whether THIS
+    # caller may name THAT record. Conflating them is how a valid four-digit number became
+    # permission to read a stranger's balance.
+    "party_records": {
+        "local": f"{_PKG}.adapters.local.party_records:LocalFixturePartyRecords",
+        "gcp": f"{_PKG}.adapters.gcp.party_records:PlatformPartyRecords",
+        "onprem": f"{_PKG}.adapters.onprem.party_records:OnPremPartyRecords",
+    },
     "contact_store": {
         "local": f"{_PKG}.adapters.local.contact_store:LocalContactStore",
         "gcp": f"{_PKG}.adapters.gcp.contact_store:FirestoreContactStore",
@@ -445,6 +455,9 @@ class VoiceSettings:
     #: Fallbacks when a dialled number (DNIS) has no entry in :attr:`dnis`.
     default_market: str = "SG"
     default_locale: str = "en-SG"
+    #: The line of business a call lands in when its DNIS route names none. A caller dialled a
+    #: number, and the number is what says which business they reached.
+    default_vertical: str = "retail_banking"
     #: DNIS routing: dialled number -> {tenant, market, locale}. The tenant a call lands in is
     #: decided HERE or by the deployment default, never by anything the caller sent.
     dnis: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
@@ -493,6 +506,7 @@ class VoiceSettings:
             contact_header=str(data.get("contact_header") or defaults.contact_header),
             default_market=str(data.get("default_market") or defaults.default_market),
             default_locale=str(data.get("default_locale") or defaults.default_locale),
+            default_vertical=str(data.get("default_vertical") or defaults.default_vertical),
             dnis=dnis,
         )
 
@@ -529,6 +543,7 @@ class Settings:
     project_id: str = ""
     #: The offline knowledge-base corpus the local retrieval adapter grounds against.
     kb_path: str = ""
+    parties_path: str = ""
     #: The directory of scripted contact streams the offline speech and channel adapters replay.
     streams_path: str = ""
     #: The directory of reviewed policy packs. Loaded and VALIDATED at boot by ``load``.
@@ -539,6 +554,7 @@ class Settings:
     guardrail_url: str = ""
     #: Base URL of the client's MCP / A2A action service.
     tool_catalog_url: str = ""
+    party_records_url: str = ""
     #: The managed model id the generation adapter asks for. Configuration, never a literal.
     model: str = "gemini-3.5-flash"
     #: The two separately gated modes. Both OFF by default: a service with no mode block serves
@@ -582,11 +598,13 @@ class Settings:
             tenant=str(data.get("tenant") or ""),
             project_id=str(data.get("project_id") or ""),
             kb_path=str(data.get("kb_path") or ""),
+            parties_path=str(data.get("parties_path") or ""),
             streams_path=str(data.get("streams_path") or ""),
             packs_path=packs_path,
             retrieval_url=str(data.get("retrieval_url") or ""),
             guardrail_url=str(data.get("guardrail_url") or ""),
             tool_catalog_url=str(data.get("tool_catalog_url") or ""),
+            party_records_url=str(data.get("party_records_url") or ""),
             model=str(data.get("model") or "gemini-3.5-flash"),
             # Resolved at LOAD, so an empty or unknown mode flag, or a mode enabled with no
             # promotion evidence, is a BOOT failure. ``api/app.py`` calls this at module scope.
@@ -666,6 +684,12 @@ class Container:
     def tool_catalog(self) -> ToolCatalogPort:
         adapter = self._bind("tool_catalog")
         assert isinstance(adapter, ToolCatalogPort)
+        return adapter
+
+    @cached_property
+    def party_records(self) -> PartyRecordsPort:
+        adapter = self._bind("party_records")
+        assert isinstance(adapter, PartyRecordsPort)
         return adapter
 
     @cached_property

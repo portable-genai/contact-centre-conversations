@@ -166,6 +166,7 @@ CANONICAL_ACTION = ActionCall(
     action_id="read_card_balance",
     contact_id=sample_cases.SELF_SERVICE_CONTACT_ID,
     tenant=sample_cases.TENANT,
+    vertical=sample_cases.VERTICAL,
     parameters={"card_last4": "4321"},
 )
 
@@ -211,6 +212,29 @@ def _retrieval_invoke(adapter: Any) -> Any:
 
 def _retrieval_answered(_adapter: Any, result: Any) -> bool:
     return bool(result) and all(passage.citation.source_id for passage in result)
+
+
+def _party_records_invoke(adapter: Any) -> Any:
+    # The party in the ownership fixture, asking about the record that fixture says is theirs.
+    return adapter.owns(
+        party_ref="party-sg-0001",
+        tenant=sample_cases.TENANT,
+        parameter="card_last4",
+        value="4321",
+    )
+
+
+def _party_records_answered(adapter: Any, result: Any) -> bool:
+    # Answering is not enough: an adapter that said True to everything would satisfy a
+    # yes-only check while being exactly the defect ownership exists to catch. So the canonical
+    # call also asks about a record the fixture gives to somebody else.
+    others = adapter.owns(
+        party_ref="party-sg-0001",
+        tenant=sample_cases.TENANT,
+        parameter="card_last4",
+        value="9876",
+    )
+    return result is True and others is False
 
 
 def _generation_invoke(adapter: Any) -> Any:
@@ -365,6 +389,13 @@ CANONICAL_CALLS: dict[str, PortCase] = {
         # Rule R8: with no console configured the managed router must refuse, not swallow.
         managed_refusal=(RuntimeError,),
         detail="route one escalated result to human review",
+    ),
+    "party_records": PortCase(
+        invoke=_party_records_invoke,
+        answered=_party_records_answered,
+        # Unconfigured base URL: the platform client refuses rather than defaulting to a host.
+        managed_refusal=(RuntimeError,),
+        detail="answer whether one party owns the record a parameter names",
     ),
     "retrieval": PortCase(
         invoke=_retrieval_invoke,

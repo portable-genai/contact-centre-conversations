@@ -27,6 +27,14 @@ Four pack kinds, one loader:
   as a vulnerability cue in its market) and they are per market, so they are a pack rather than
   a constant somebody edits in Python.
 
+Every pack declares a ``vertical``, the line of business whose reviewed policy it carries, and
+packs are selected by ``(market, vertical)`` rather than by market alone. A bank and an insurer
+both operate in SG and their procedures, disclosures, cues and action catalogs are different
+artifacts reviewed by different people. Keying on market alone made two such packs load, both
+validate, and one silently win by whichever filename sorted first, which is a compliance
+artifact being chosen by alphabetical accident. Two packs claiming the same key is now a load
+failure, checked in :meth:`PackLibrary.check_cross_references`.
+
 This module is PURE. It parses and validates mappings that somebody else read off a disk;
 ``config.py`` is the only place that opens a file. That split is what lets the whole pack
 vocabulary be unit-tested with no filesystem and no fixtures directory.
@@ -218,10 +226,15 @@ class ProcedurePack:
 
     pack_id: str
     market: str
+    vertical: str
     locale: str
     initial_state: str
     states: tuple[ProcedureState, ...]
     lexicon: Lexicon
+
+    @property
+    def key(self) -> tuple[str, str]:
+        return (self.market, self.vertical)
 
     def state(self, state_id: str) -> ProcedureState:
         for candidate in self.states:
@@ -263,6 +276,7 @@ def _procedure(node: Mapping[str, Any]) -> ProcedurePack:
     pack = ProcedurePack(
         pack_id=pack_id,
         market=_text(node, "market", what),
+        vertical=_identifier(node, "vertical", what),
         locale=locale,
         initial_state=_identifier(node, "initial_state", what),
         states=tuple(states),
@@ -327,10 +341,15 @@ class DisclosurePack:
 
     pack_id: str
     market: str
+    vertical: str
     jurisdiction: str
     locale: str
     disclosures: tuple[DisclosureSpec, ...]
     lexicon: Lexicon
+
+    @property
+    def key(self) -> tuple[str, str]:
+        return (self.market, self.vertical)
 
     def spec(self, disclosure_id: str) -> DisclosureSpec:
         for candidate in self.disclosures:
@@ -384,6 +403,7 @@ def _disclosure(node: Mapping[str, Any]) -> DisclosurePack:
     return DisclosurePack(
         pack_id=pack_id,
         market=_text(node, "market", what),
+        vertical=_identifier(node, "vertical", what),
         jurisdiction=_text(node, "jurisdiction", what),
         locale=locale,
         disclosures=tuple(specs),
@@ -417,6 +437,7 @@ class AllowlistPack:
 
     tenant: str
     market: str
+    vertical: str
     locale: str
     intents: tuple[IntentSpec, ...]
     allowed_actions: tuple[str, ...]
@@ -426,8 +447,8 @@ class AllowlistPack:
     default_confidence_floor: float = 0.6
 
     @property
-    def key(self) -> tuple[str, str]:
-        return (self.tenant, self.market)
+    def key(self) -> tuple[str, str, str]:
+        return (self.tenant, self.market, self.vertical)
 
     @property
     def intent_ids(self) -> tuple[str, ...]:
@@ -444,7 +465,8 @@ def _allowlist(node: Mapping[str, Any]) -> AllowlistPack:
     what = "allowlist pack"
     tenant = _identifier(node, "tenant", what)
     market = _text(node, "market", what)
-    what = f"allowlist pack {tenant}/{market}"
+    vertical = _identifier(node, "vertical", what)
+    what = f"allowlist pack {tenant}/{market}/{vertical}"
     locale = _text(node, "locale", what)
     default_floor = _fraction(node, "confidence_floor", what, default=0.6)
     raw = node.get("intents") or ()
@@ -485,13 +507,18 @@ def _allowlist(node: Mapping[str, Any]) -> AllowlistPack:
     # and an empty pack carries NO lexicon rather than a lexicon that matches nothing: a phrase
     # list nobody wrote and a phrase list that happens to miss are different facts.
     lexicon = (
-        Lexicon(lexicon_id=f"{tenant}-{market}-intents", locale=locale, entries=tuple(entries))
+        Lexicon(
+            lexicon_id=f"{tenant}-{market}-{vertical}-intents",
+            locale=locale,
+            entries=tuple(entries),
+        )
         if entries
         else None
     )
     return AllowlistPack(
         tenant=tenant,
         market=market,
+        vertical=vertical,
         locale=locale,
         intents=tuple(intents),
         allowed_actions=_strings(node, "actions", what),
@@ -508,6 +535,7 @@ class ActionCatalogPack:
     """The action catalog's metadata: the parameter schema and the consequential flag."""
 
     catalog_id: str
+    vertical: str
     actions: tuple[ActionSpec, ...]
 
     def spec(self, action_id: str) -> ActionSpec | None:
@@ -519,6 +547,30 @@ class ActionCatalogPack:
     @property
     def action_ids(self) -> tuple[str, ...]:
         return tuple(action.action_id for action in self.actions)
+
+
+def _parameter(node: Any, scope: str) -> ParameterSpec:
+    """One declared parameter. ``binds_to_party`` is required, like ``consequential`` above.
+
+    A parameter whose catalog forgot to say whether it names somebody's record is exactly the
+    parameter nobody thought about, and defaulting it to "does not" would leave it unchecked
+    while looking deliberate.
+    """
+    param = _mapping(node, f"{scope}: parameter")
+    name = _text(param, "name", f"{scope}: parameter")
+    if "binds_to_party" not in param:
+        raise PackError(
+            f"{scope}: parameter {name!r} must say 'binds_to_party'. A value that names a "
+            "record somebody owns has to be checked against who is asking, and a parameter "
+            "nobody classified is the one that gets missed."
+        )
+    return ParameterSpec(
+        name=name,
+        kind=str(param.get("kind") or "string"),
+        required=bool(param.get("required", True)),
+        pattern=str(param.get("pattern") or ""),
+        binds_to_party=bool(param.get("binds_to_party", False)),
+    )
 
 
 def _actions(node: Mapping[str, Any]) -> ActionCatalogPack:
@@ -536,15 +588,7 @@ def _actions(node: Mapping[str, Any]) -> ActionCatalogPack:
         raw_params = entry.get("parameters") or ()
         if isinstance(raw_params, str) or not isinstance(raw_params, Sequence):
             raise PackError(f"{scope}: 'parameters' must be a list")
-        parameters = tuple(
-            ParameterSpec(
-                name=_text(_mapping(param, f"{scope}: parameter"), "name", f"{scope}: parameter"),
-                kind=str(_mapping(param, f"{scope}: parameter").get("kind") or "string"),
-                required=bool(_mapping(param, f"{scope}: parameter").get("required", True)),
-                pattern=str(_mapping(param, f"{scope}: parameter").get("pattern") or ""),
-            )
-            for param in raw_params
-        )
+        parameters = tuple(_parameter(param, scope) for param in raw_params)
         if "consequential" not in entry:
             raise PackError(
                 f"{scope}: 'consequential' is required. An action whose catalog forgot to say "
@@ -561,7 +605,11 @@ def _actions(node: Mapping[str, Any]) -> ActionCatalogPack:
         )
     if len({s.action_id for s in specs}) != len(specs):
         raise PackError(f"{what}: duplicate action ids")
-    return ActionCatalogPack(catalog_id=catalog_id, actions=tuple(specs))
+    return ActionCatalogPack(
+        catalog_id=catalog_id,
+        vertical=_identifier(node, "vertical", what),
+        actions=tuple(specs),
+    )
 
 
 # --------------------------------------------------------------------------------------- #
@@ -579,9 +627,14 @@ class CuePack:
 
     pack_id: str
     market: str
+    vertical: str
     locale: str
     escalation: Lexicon | None
     vulnerability: Lexicon | None
+
+    @property
+    def key(self) -> tuple[str, str]:
+        return (self.market, self.vertical)
 
 
 def _cue_lexicon(
@@ -620,6 +673,7 @@ def _cues(node: Mapping[str, Any]) -> CuePack:
     return CuePack(
         pack_id=pack_id,
         market=_text(node, "market", what),
+        vertical=_identifier(node, "vertical", what),
         locale=locale,
         escalation=_cue_lexicon(
             escalation, lexicon_id=f"{pack_id}-escalation", locale=locale, entry_id="escalation"
@@ -703,24 +757,36 @@ class PackLibrary:
         library.check_cross_references()
         return library
 
-    def procedure_for(self, market: str) -> ProcedurePack | None:
-        return next((p for p in self.procedures if p.market == market), None)
+    def procedure_for(self, market: str, vertical: str) -> ProcedurePack | None:
+        return next((p for p in self.procedures if p.key == (market, vertical)), None)
 
-    def disclosure_for(self, market: str) -> DisclosurePack | None:
-        return next((p for p in self.disclosures if p.market == market), None)
+    def disclosure_for(self, market: str, vertical: str) -> DisclosurePack | None:
+        return next((p for p in self.disclosures if p.key == (market, vertical)), None)
 
-    def cues_for(self, market: str) -> CuePack | None:
-        return next((p for p in self.cues if p.market == market), None)
+    def cues_for(self, market: str, vertical: str) -> CuePack | None:
+        return next((p for p in self.cues if p.key == (market, vertical)), None)
 
-    def allowlist_for(self, tenant: str, market: str) -> AllowlistPack | None:
-        return next((p for p in self.allowlists if p.key == (tenant, market)), None)
+    def allowlist_for(self, tenant: str, market: str, vertical: str) -> AllowlistPack | None:
+        return next((p for p in self.allowlists if p.key == (tenant, market, vertical)), None)
 
-    def action_spec(self, action_id: str) -> ActionSpec | None:
+    def action_spec(self, action_id: str, vertical: str) -> ActionSpec | None:
+        """The action as THIS vertical's catalog declares it.
+
+        Scoped rather than global: two lines of business may both declare ``cancel_policy`` and
+        mean different things by it, with different parameters and a different consequential
+        flag. A flat namespace would let an insurer's catalog answer a banking contact.
+        """
         for catalog in self.catalogs:
+            if catalog.vertical != vertical:
+                continue
             found = catalog.spec(action_id)
             if found is not None:
                 return found
         return None
+
+    def action_ids_for(self, vertical: str) -> tuple[str, ...]:
+        matching = (c for c in self.catalogs if c.vertical == vertical)
+        return tuple(sorted({a for catalog in matching for a in catalog.action_ids}))
 
     @property
     def action_ids(self) -> tuple[str, ...]:
@@ -732,26 +798,57 @@ class PackLibrary:
         A disclosure whose trigger names a procedure state that was renamed becomes a window
         that never opens, which looks exactly like a market with no disclosure requirement.
         """
-        catalog_actions = set(self.action_ids)
+        self._check_unique_keys()
         for allowlist in self.allowlists:
+            catalog_actions = set(self.action_ids_for(allowlist.vertical))
+            scope = f"allowlist {allowlist.tenant}/{allowlist.market}/{allowlist.vertical}"
             for intent in allowlist.intents:
                 for action_id in intent.actions:
                     if action_id not in catalog_actions:
                         raise PackError(
-                            f"allowlist {allowlist.tenant}/{allowlist.market}: intent "
-                            f"{intent.intent_id!r} names action {action_id!r}, which no action "
-                            "catalog declares"
+                            f"{scope}: intent {intent.intent_id!r} names action {action_id!r}, "
+                            f"which no {allowlist.vertical} action catalog declares"
                         )
             for action_id in allowlist.allowed_actions:
                 if action_id not in catalog_actions:
                     raise PackError(
-                        f"allowlist {allowlist.tenant}/{allowlist.market}: allowed action "
-                        f"{action_id!r} is not declared by any action catalog"
+                        f"{scope}: allowed action {action_id!r} is not declared by any "
+                        f"{allowlist.vertical} action catalog"
                     )
         for pack in self.disclosures:
-            procedure = self.procedure_for(pack.market)
+            procedure = self.procedure_for(pack.market, pack.vertical)
             for spec in pack.disclosures:
                 self._check_trigger(pack, spec, procedure)
+
+    def _check_unique_keys(self) -> None:
+        """Two packs of one kind claiming one key is a load failure, not a race to sort first.
+
+        Before the key carried a vertical, a second SG procedure pack loaded, validated, and
+        then lost silently to whichever filename sorted earlier: the service ran on a
+        compliance artifact chosen by alphabetical accident, and nothing anywhere said so.
+        Refusing here means the failure is a boot error naming both packs.
+        """
+        claims: list[tuple[str, tuple[str, ...], str]] = []
+        for procedure in self.procedures:
+            claims.append(("procedure", procedure.key, procedure.pack_id))
+        for disclosure in self.disclosures:
+            claims.append(("disclosure", disclosure.key, disclosure.pack_id))
+        for cue in self.cues:
+            claims.append(("cue", cue.key, cue.pack_id))
+        for allowlist in self.allowlists:
+            claims.append(("allowlist", allowlist.key, f"{allowlist.tenant}/{allowlist.market}"))
+        for catalog in self.catalogs:
+            claims.append(("action catalog", (catalog.vertical,), catalog.catalog_id))
+
+        seen: dict[tuple[str, tuple[str, ...]], str] = {}
+        for label, identity, name in claims:
+            if (label, identity) in seen:
+                raise PackError(
+                    f"two {label} packs claim {list(identity)}: "
+                    f"{seen[(label, identity)]!r} and {name!r}. One key, one reviewed pack: "
+                    "give them different verticals or delete the duplicate."
+                )
+            seen[(label, identity)] = name
 
     @staticmethod
     def _check_trigger(
@@ -765,8 +862,9 @@ class PackLibrary:
             if procedure is None or state_id not in procedure.state_ids:
                 raise PackError(
                     f"disclosure pack {pack.pack_id}: {spec.disclosure_id!r} triggers on "
-                    f"procedure state {state_id!r}, which the {pack.market} procedure pack does "
-                    "not define (a window that can never open is not a disclosure requirement)"
+                    f"procedure state {state_id!r}, which the {pack.market}/{pack.vertical} "
+                    "procedure pack does not define (a window that can never open is not a "
+                    "disclosure requirement)"
                 )
             return
         if trigger.startswith(_TRIGGER_LEXICON):
@@ -774,7 +872,8 @@ class PackLibrary:
             if procedure is None or entry_id not in procedure.lexicon.entry_ids:
                 raise PackError(
                     f"disclosure pack {pack.pack_id}: {spec.disclosure_id!r} triggers on lexicon "
-                    f"entry {entry_id!r}, which the {pack.market} procedure pack does not define"
+                    f"entry {entry_id!r}, which the {pack.market}/{pack.vertical} procedure pack "
+                    "does not define"
                 )
             return
         raise PackError(

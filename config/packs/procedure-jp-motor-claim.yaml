@@ -1,0 +1,68 @@
+# Procedure pack: a motor claim first notification of loss, Japan general insurer
+# (FICTIONAL policy). Same order as the SG pack, in Japanese.
+kind: procedure
+pack_id: jp-motor-claim-v1
+market: JP
+vertical: general_insurance
+locale: ja-JP
+initial_state: greeting
+
+lexicon:
+  - entry_id: greeting_given
+    phrases:
+      - お電話ありがとうございます
+      - 本日はどのようなご用件でしょうか
+  - entry_id: identity_verified
+    phrases:
+      - 生年月日をご確認ください
+      - 証券番号をお願いします
+  - entry_id: incident_details_taken
+    phrases:
+      - いつ事故が起きましたか
+      - どちらで発生しましたか
+      - お怪我はありませんか
+  - entry_id: cover_confirmed
+    phrases:
+      - ご契約の補償範囲では
+      - お支払いいただく免責金額は
+  - entry_id: next_steps_explained
+    phrases:
+      - 担当者からご連絡いたします
+      - 受付番号は
+
+states:
+  - state_id: greeting
+    title: Open the contact
+    instruction: Greet the caller and ask how you can help today.
+    exit_criteria: [greeting_given]
+    required_evidence: [greeting_given]
+    transitions: [verify_identity]
+    role: agent
+  - state_id: verify_identity
+    title: Verify the caller
+    instruction: Verify the caller before discussing the policy, taking date of birth and policy number.
+    exit_criteria: [identity_verified]
+    required_evidence: [identity_verified]
+    transitions: [take_incident]
+    role: agent
+  - state_id: take_incident
+    title: Take the incident detail
+    instruction: Ask when and where the incident happened, and whether anyone was injured.
+    exit_criteria: [incident_details_taken]
+    required_evidence: [incident_details_taken]
+    transitions: [confirm_cover]
+    role: agent
+  - state_id: confirm_cover
+    title: Confirm what the policy covers
+    instruction: State the cover and the excess, and explain the significant exclusions.
+    exit_criteria: [cover_confirmed]
+    required_evidence: [cover_confirmed]
+    transitions: [explain_next_steps]
+    role: agent
+  - state_id: explain_next_steps
+    title: Explain what happens next
+    instruction: Give the claim reference, say an assessor will make contact, and give the complaints route.
+    exit_criteria: [next_steps_explained]
+    required_evidence: [next_steps_explained]
+    transitions: []
+    role: agent

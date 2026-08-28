@@ -25,15 +25,24 @@ from datetime import datetime
 from speech_lexicon_kit import Transcript, find_hits
 
 from ..ports.observability import ObservabilityTracerPort
+from ..ports.party_records import PartyRecordsPort
 from ..ports.review_router import ReviewRouterPort
 from ..ports.tool_catalog import ToolCatalogPort
-from . import action_engine, disclosure_engine, handoff, intent_engine, policy_gate
+from . import (
+    action_engine,
+    disclosure_engine,
+    escalation,
+    handoff,
+    intent_engine,
+    policy_gate,
+)
 from .contact_kernel import ContactKernel
 from .guardrails import degradation_for
 from .kernel import Citation, Decision, Severity
 from .models import (
     ActionCall,
     ActionOutcome,
+    ActionSpec,
     DisclosureReport,
     GateOutcome,
     HandoffPackage,
@@ -87,12 +96,14 @@ class SelfServiceService:
         kernel: ContactKernel,
         packs: PackLibrary,
         tools: ToolCatalogPort,
+        party_records: PartyRecordsPort,
         review_router: ReviewRouterPort,
         tracer: ObservabilityTracerPort,
     ) -> None:
         self._kernel = kernel
         self._packs = packs
         self._tools = tools
+        self._parties = party_records
         self._review = review_router
         self._tracer = tracer
 
@@ -129,13 +140,17 @@ class SelfServiceService:
             degradation = degradation_for(_MODE, guarded.screen)
             transcript = self._kernel.transcript(contact)
 
-            allowlist = self._packs.allowlist_for(contact.tenant, contact.market)
+            allowlist = self._packs.allowlist_for(contact.tenant, contact.market, contact.vertical)
             intent = (
                 intent_engine.best_intent(allowlist, guarded.turn.text)
                 if allowlist is not None and degradation.allow_model
                 else None
             )
-            spec = self._packs.action_spec(requested_action) if requested_action else None
+            spec = (
+                self._packs.action_spec(requested_action, contact.vertical)
+                if requested_action
+                else None
+            )
             verdict = policy_gate.evaluate(
                 allowlist,
                 tenant=contact.tenant,
@@ -151,6 +166,8 @@ class SelfServiceService:
                 verdict,
                 contact_id=contact.contact_id,
                 tenant=contact.tenant,
+                vertical=contact.vertical,
+                party_ref=contact.party_ref,
                 action_id=requested_action,
                 parameters=parameters or {},
                 as_of=as_of,
@@ -159,7 +176,7 @@ class SelfServiceService:
             # Cue lists are PER MARKET policy, so they are looked up per contact rather than
             # bound once at construction: a deployment serving two markets would otherwise apply
             # one market's vulnerability definition to the other's customers.
-            cues = self._packs.cues_for(contact.market)
+            cues = self._packs.cues_for(contact.market, contact.vertical)
             trigger = handoff.decide_trigger(
                 verdict=verdict,
                 consecutive_failures=state.consecutive_failures,
@@ -172,6 +189,7 @@ class SelfServiceService:
 
             disclosures = self._disclosures(
                 contact.market,
+                contact.vertical,
                 transcript=transcript,
                 as_of=as_of,
                 contact_ended=submission.ends_contact,
@@ -199,10 +217,10 @@ class SelfServiceService:
                 else None
             )
 
-            requires_review = bool(
-                disclosures.requires_human_review
-                or (action is not None and action.requires_human_review)
+            escalations = escalation.reasons_for(
+                degradation=degradation, disclosures=disclosures, action=action
             )
+            requires_review = bool(escalations)
 
             result = SelfServiceResult(
                 contact=contact,
@@ -265,6 +283,8 @@ class SelfServiceService:
         *,
         contact_id: str,
         tenant: str,
+        vertical: str,
+        party_ref: str,
         action_id: str,
         parameters: dict[str, str],
         as_of: datetime,
@@ -272,14 +292,42 @@ class SelfServiceService:
         """Prepare and, only where permitted, execute. The catalog is asked before anything runs."""
         if not action_id:
             return None
-        spec = self._tools.describe(action_id)
+        spec = self._tools.describe(action_id, vertical)
         call = ActionCall(
-            action_id=action_id, contact_id=contact_id, tenant=tenant, parameters=parameters
+            action_id=action_id,
+            contact_id=contact_id,
+            tenant=tenant,
+            vertical=vertical,
+            party_ref=party_ref,
+            parameters=parameters,
         )
-        may_execute, provisional = action_engine.decide(spec, call, verdict, as_of=as_of)
+        may_execute, provisional = action_engine.decide(
+            spec, call, verdict, as_of=as_of, ownership=self._ownership(spec, call)
+        )
         if not may_execute:
             return provisional
         return self._tools.execute(call)
+
+    def _ownership(self, spec: ActionSpec | None, call: ActionCall) -> dict[str, bool]:
+        """Resolve, per parameter the catalog binds to a party, whether this caller owns it.
+
+        Only the declared ones are asked about, and only when a value was actually supplied: a
+        lookup for a parameter nobody sent would be a question about nothing. The port raises
+        when it cannot answer, and that propagates rather than becoming a quiet False, because
+        "the records system is down" must not read to a customer as "that is not your card".
+        """
+        if spec is None:
+            return {}
+        return {
+            parameter.name: self._parties.owns(
+                party_ref=call.party_ref,
+                tenant=call.tenant,
+                parameter=parameter.name,
+                value=call.parameters[parameter.name],
+            )
+            for parameter in spec.parameters
+            if parameter.binds_to_party and parameter.name in call.parameters
+        }
 
     def _package(
         self,
@@ -293,13 +341,15 @@ class SelfServiceService:
         parameters: dict[str, str],
     ) -> HandoffPackage:
         contact = submission.contact
-        procedure = self._packs.procedure_for(contact.market)
+        procedure = self._packs.procedure_for(contact.market, contact.vertical)
         progress = advance(procedure, transcript, as_of=as_of) if procedure is not None else None
         pending = (
             ActionCall(
                 action_id=action_id,
                 contact_id=contact.contact_id,
                 tenant=contact.tenant,
+                vertical=contact.vertical,
+                party_ref=contact.party_ref,
                 parameters=parameters,
             )
             if action_id
@@ -317,12 +367,20 @@ class SelfServiceService:
         )
 
     def _disclosures(
-        self, market: str, *, transcript: Transcript, as_of: datetime, contact_ended: bool
+        self,
+        market: str,
+        vertical: str,
+        *,
+        transcript: Transcript,
+        as_of: datetime,
+        contact_ended: bool,
     ) -> DisclosureReport:
-        pack = self._packs.disclosure_for(market)
+        pack = self._packs.disclosure_for(market, vertical)
         if pack is None:
-            raise ProcedureEngineError(f"no disclosure pack is configured for market {market!r}")
-        procedure = self._packs.procedure_for(market)
+            raise ProcedureEngineError(
+                f"no disclosure pack is configured for market {market!r} and vertical {vertical!r}"
+            )
+        procedure = self._packs.procedure_for(market, vertical)
         hits = find_hits(transcript, procedure.lexicon) if procedure is not None else ()
         return disclosure_engine.evaluate_disclosures(
             pack,

@@ -42,6 +42,28 @@ def _container(settings: Settings | None) -> Container:
     return build_container(settings)
 
 
+def _tenant(container: Container) -> str:
+    """The deployment's tenant partition, from configuration and never from a caller.
+
+    These functions are exported on the A2A agent card, so a ``tenant`` argument would be a
+    MODEL choosing which partition to read. The API path has said so since it was written
+    (``api/app.py``: "the tenant comes from the principal, never from the body"); this
+    surface used to take it as a parameter defaulting to a real tenant id, which is the same
+    defect with a friendlier spelling.
+
+    Refuses when nothing is configured rather than inventing one: a tool that picked a
+    partition because none was named would read somebody's contacts by accident.
+    """
+    tenant = container.settings.tenant.strip()
+    if not tenant:
+        raise ValueError(
+            "no tenant partition is configured (CONTACT_TENANT / settings tenant), so this "
+            "tool cannot say whose contacts it is reading. Configure it rather than passing "
+            "one in: on this surface a caller-supplied tenant is a model choosing a partition."
+        )
+    return tenant
+
+
 def _redacted(node: Any) -> Any:
     """Mask personal data in every string of a tool result, however deeply it is nested.
 
@@ -65,6 +87,8 @@ def _submission(
     tenant: str,
     market: str,
     locale: str,
+    vertical: str,
+    party_ref: str,
     text: str,
     index: int,
     mode: ContactMode,
@@ -75,7 +99,13 @@ def _submission(
 ) -> TurnSubmission:
     return TurnSubmission(
         contact=ContactRef(
-            contact_id=contact_id, tenant=tenant, market=market, locale=locale, mode=mode
+            contact_id=contact_id,
+            tenant=tenant,
+            market=market,
+            locale=locale,
+            vertical=vertical,
+            party_ref=party_ref,
+            mode=mode,
         ),
         index=index,
         speaker_id=role.value,
@@ -90,9 +120,10 @@ def _submission(
 def whisper_panel(
     contact_id: str,
     text: str,
-    tenant: str = "demo-bank",
     market: str = "SG",
     locale: str = "en-SG",
+    vertical: str = "retail_banking",
+    party_ref: str = "",
     index: int = 0,
     start_ms: int | None = None,
     end_ms: int | None = None,
@@ -110,9 +141,11 @@ def whisper_panel(
     Args:
       contact_id: The contact this turn belongs to.
       text: What was said. Redacted and screened before anything else sees it.
-      tenant: Tenant partition. A contact belonging to another tenant is refused.
       market: Which market's procedure and disclosure packs apply.
       locale: The transcript locale, which selects phrase normalisation.
+      vertical: The line of business, which selects which reviewed packs apply.
+      party_ref: Who the contact is about, once verified. Empty means nobody is
+        identified yet, and an unidentified party owns no records.
       index: The turn's index within the contact.
       start_ms: Where the turn starts, in contact milliseconds. A disclosure window cannot be
         judged without offsets, so a turn with none leaves timed disclosures unverifiable
@@ -131,9 +164,11 @@ def whisper_panel(
     result = built.agent_assist.observe(
         _submission(
             contact_id=contact_id,
-            tenant=tenant,
+            tenant=_tenant(container),
             market=market,
             locale=locale,
+            vertical=vertical,
+            party_ref=party_ref,
             text=text,
             index=index,
             mode=ContactMode.AGENT_ASSIST,
@@ -164,9 +199,10 @@ def whisper_panel(
 def self_service_reply(
     contact_id: str,
     text: str,
-    tenant: str = "demo-bank",
     market: str = "SG",
     locale: str = "en-SG",
+    vertical: str = "retail_banking",
+    party_ref: str = "",
     index: int = 0,
     requested_action: str = "",
     actor: str = DEFAULT_ACTOR,
@@ -181,9 +217,11 @@ def self_service_reply(
     Args:
       contact_id: The contact this turn belongs to.
       text: What the customer said. Redacted and screened before anything else sees it.
-      tenant: Tenant partition. A contact belonging to another tenant is refused.
       market: Which market's allowlist, procedure and disclosure packs apply.
       locale: The transcript locale, which selects phrase normalisation.
+      vertical: The line of business, which selects which reviewed packs apply.
+      party_ref: Who the contact is about, once verified. Empty means nobody is
+        identified yet, and an unidentified party owns no records.
       index: The turn's index within the contact.
       requested_action: The action this turn is asking for, if any.
       actor: The verified identity this call is attributed to.
@@ -198,9 +236,11 @@ def self_service_reply(
     result = built.self_service.handle(
         _submission(
             contact_id=contact_id,
-            tenant=tenant,
+            tenant=_tenant(container),
             market=market,
             locale=locale,
+            vertical=vertical,
+            party_ref=party_ref,
             text=text,
             index=index,
             mode=ContactMode.SELF_SERVICE,

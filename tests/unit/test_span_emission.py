@@ -99,6 +99,7 @@ def _handle(submission: TurnSubmission) -> _RecordingTracer:
         kernel=build_services(container).kernel,
         packs=container.settings.packs,
         tools=container.tool_catalog,
+        party_records=container.party_records,
         review_router=container.review_router,
         tracer=tracer,
     )

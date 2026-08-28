@@ -1,0 +1,22 @@
+# Scored by: eval/run_eval.py::run_self_service against the CORPUS FILE. Every citation that
+# reached a customer must be a passage classified `public` and carrying a source_ref they could
+# actually look up: an internal id is provenance for the bank, not for the person being told
+# something.
+metric: customer_citation_audience_safety
+description: >
+  Fraction of citations shown to a customer that come from a public passage carrying a
+  resolvable source reference.
+threshold: 1.0
+direction: maximize
+applies_to:
+  - EvalReport.results[customer_citation_audience_safety]
+criteria:
+  - id: public_only
+    description: No internal passage is ever cited to a customer.
+    weight: 0.7
+  - id: resolvable
+    description: Every citation names a published reference.
+    weight: 0.3
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"

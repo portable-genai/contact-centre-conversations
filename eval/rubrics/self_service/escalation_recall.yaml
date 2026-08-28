@@ -1,0 +1,32 @@
+# Scored by: eval/run_eval.py::run_self_service against `expected_escalation`, which is a
+# REVIEWER'S judgement about whether a human has to see the contact. It is the one scenario
+# field that may never be copied from the pipeline, because the whole metric is whether the
+# pipeline agrees with a person about when a person is needed.
+#
+# RECALL, not accuracy, and deliberately so. Missing an escalation is the failure this gates:
+# somebody who needed a human did not get one. Escalating more than necessary is a cost, and it
+# is already measured, by containment.
+metric: escalation_recall
+description: >
+  Of the contacts a reviewer says a human must see, the fraction that both escalated and
+  actually routed to human review.
+threshold: 1.0
+direction: maximize
+applies_to:
+  - EvalReport.results[escalation_recall]
+criteria:
+  - id: escalated
+    description: The result set requires_human_review.
+    weight: 0.4
+  - id: routed
+    description: >-
+      Rule R8, so it reached somebody: it carries a review_ref.
+    weight: 0.6
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+companion_metrics:
+  review_routing_safety:
+    threshold: 1.0
+    description: >-
+      The converse: nothing that DID escalate may fail to route.

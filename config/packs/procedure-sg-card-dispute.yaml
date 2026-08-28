@@ -6,6 +6,7 @@
 kind: procedure
 pack_id: sg-card-dispute-v1
 market: SG
+vertical: retail_banking
 locale: en-SG
 initial_state: greeting
 

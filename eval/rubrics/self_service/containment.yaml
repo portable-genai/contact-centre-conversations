@@ -1,0 +1,21 @@
+# Scored by: eval/run_eval.py::run_self_service over NON-adversarial contacts only. It is the
+# one metric here that is a business KPI rather than a label match, and it is deliberately the
+# one with a modest floor: an assistant that contains too much is a worse outcome than one that
+# hands off, so this floor is a floor and never a target.
+metric: containment
+description: >
+  Fraction of non-adversarial contacts resolved entirely in self-service: the gate allowed the
+  turn and no handoff was triggered.
+threshold: 0.2
+direction: maximize
+applies_to:
+  - EvalReport.results[containment]
+
+criteria:
+  - id: allowed_and_not_handed_off
+    description: The final verdict allowed and no handoff package was built.
+    weight: 1.0
+
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
