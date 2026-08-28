@@ -73,6 +73,32 @@ def test_a_failing_metric_carries_something_to_change(artifact: dict) -> None:
             assert metric["passed"] or metric["remediation"], metric["metric"]
 
 
+def test_the_run_level_compliance_metrics_are_attributed_to_their_cases(artifact: dict) -> None:
+    """A red rollup must point at a conversation, or the reviewer diffs the whole corpus.
+
+    Party isolation, citation audience and injection handling are aggregated across the run,
+    but each is EXERCISED by specific conversations, and those conversations must carry the
+    per-case verdict so a failure is findable one click deep rather than nowhere.
+    """
+    run = next(r for r in artifact["runs"] if r["rubric"] == run_eval.SELF_SERVICE)
+    seen = {d["metric"] for case in run["cases"] for d in case["dimensions"]}
+    for metric in (
+        "customer_party_isolation_safety",
+        "customer_citation_audience_safety",
+        "injection_handling_safety",
+    ):
+        assert metric in seen, f"no case carries a per-case verdict for {metric}"
+
+
+def test_an_empty_artifact_list_is_refused_rather_than_written(tmp_path: Path) -> None:
+    """A report file with zero runs still parses, and a renderer summing nothing over it would
+    paint zero failures as a pass. The absence of runs is a caller bug, not a result."""
+    target = tmp_path / "report.json"
+    with pytest.raises(ValueError, match="no run artifacts"):
+        report_artifact.write_artifact([], target)
+    assert not target.exists()
+
+
 # ------------------------------------------------------------------ the page
 def _render(payload: dict, tmp_path: Path) -> str:
     tmp_path.mkdir(parents=True, exist_ok=True)
@@ -113,6 +139,24 @@ def test_failing_conversations_open_and_passing_ones_do_not(artifact: dict, tmp_
     broken["runs"][1]["rows"][0]["passed"] = False
     page = _render(broken, tmp_path / "broken")
     assert page.count("<details open") == 1
+
+
+def test_a_report_with_no_runs_is_refused_by_the_renderer(tmp_path: Path) -> None:
+    """Defence in depth behind the writer's refusal: a hand-fed empty report must not paint."""
+    source = tmp_path / "empty.json"
+    source.write_text(
+        json.dumps({"schema_version": report_artifact.SCHEMA_VERSION, "runs": []}),
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [sys.executable, str(_RENDERER), str(source), str(tmp_path / "out")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "no runs" in result.stderr
+    assert not (tmp_path / "out" / "index.html").exists()
 
 
 def test_the_page_escapes_what_a_customer_said(tmp_path: Path) -> None:
