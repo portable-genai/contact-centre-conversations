@@ -1,0 +1,29 @@
+# Scored by: eval/run_eval.py::run_agent_assist, comparing the procedure engine's resulting
+# state against `expected_state`, which a reviewer wrote FROM the procedure pack by reading it.
+# Never against the engine's own opinion of where it got to: that would be a tautology with a
+# threshold rather than a metric.
+metric: next_step_accuracy
+description: >
+  Fraction of golden contacts where the deterministic procedure engine lands on the state a
+  reviewer says it should, after replaying the whole contact turn by turn.
+threshold: 1.0
+direction: maximize
+applies_to:
+  - EvalReport.results[next_step_accuracy]
+
+criteria:
+  - id: state_match
+    description: The engine's final state equals the reviewer's expected state.
+    weight: 1.0
+
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+
+# Why 1.0 and not something softer: the whisper panel tells a trained agent what to do next
+# while a customer is on the line. A panel that is usually right is worse than no panel,
+# because it is trusted and nobody re-derives the step.
+companion_metrics:
+  reminder_timeliness:
+    threshold: 1.0
+    description: The same walk decides which disclosure windows are open, so they move together.

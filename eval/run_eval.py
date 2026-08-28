@@ -29,12 +29,14 @@ Exit is ``0`` iff EVERY selected rubric passes (and, in gate mode, the authority
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import yaml
 from agent_eval_kit import EvalMetricResult, EvalReport, PromotionGateClient, print_report
 from pii_kit import pack_leak
 from speech_lexicon_kit import ChannelRole
@@ -57,23 +59,67 @@ DATASETS: dict[str, Path] = {
     SELF_SERVICE: _DATASETS / "self_service_golden.jsonl",
 }
 
-#: Per-rubric thresholds. Gate precision is 1.0 because a customer-facing gate that is right
-#: most of the time is worse than no gate: it is trusted.
-THRESHOLDS: dict[str, dict[str, float]] = {
-    AGENT_ASSIST: {
-        "next_step_accuracy": 1.0,
-        "reminder_timeliness": 1.0,
-        "citation_accuracy": 1.0,
-        "groundedness": 1.0,
-        "pii_safety": 0.99,
-    },
-    SELF_SERVICE: {
-        "gate_precision": 1.0,
-        "handoff_safety": 1.0,
-        "maker_checker_safety": 1.0,
-        "containment": 0.2,
-    },
-}
+_RUBRICS = _REPO_ROOT / "eval" / "rubrics"
+
+
+def load_thresholds_from_rubrics(root: Path = _RUBRICS) -> dict[str, dict[str, float]]:
+    """Read every metric's bar out of ``eval/rubrics/<rubric>/*.yaml``.
+
+    The numbers used to be Python literals here, which sat oddly against this repo's own
+    practice that bank-owned policy numbers are configuration rather than module constants.
+    Every other threshold in this service is a pack; these are rubrics, and they carry the
+    reasoning next to the number so a reviewer can argue with the bar rather than only read it.
+
+    Each file declares one headline ``metric`` with its ``threshold``, plus any
+    ``companion_metrics`` scored by the same run. Both are thresholds; the split is editorial,
+    grouping the metrics a reader should consider together.
+
+    Fails closed, loudly, on every way this can go wrong: a missing directory, an unreadable
+    file, a non-numeric bar, or the same metric given two different bars in two files. PyYAML is
+    a hard dependency of this service (the packs need it at boot), so there is deliberately no
+    silent fallback to a dict: a fallback would be a second home for a number that must have one.
+    """
+    if not root.is_dir():
+        raise SystemExit(f"{root}: no rubric directory, so no metric has a reviewed threshold")
+
+    thresholds: dict[str, dict[str, float]] = {}
+    for rubric in RUBRICS:
+        directory = root / rubric
+        if not directory.is_dir():
+            raise SystemExit(f"{directory}: rubric {rubric!r} has no thresholds")
+        bars: dict[str, float] = {}
+        for path in sorted(directory.glob("*.yaml")):
+            document = yaml.safe_load(path.read_text(encoding="utf-8"))
+            if not isinstance(document, dict):
+                raise SystemExit(f"{path}: a rubric must be a mapping at the top level")
+            declared = {
+                str(document.get("metric") or ""): document.get("threshold"),
+                **{
+                    str(name): (node or {}).get("threshold")
+                    for name, node in (document.get("companion_metrics") or {}).items()
+                },
+            }
+            for metric, raw in declared.items():
+                if not metric:
+                    raise SystemExit(f"{path}: names no metric")
+                if not isinstance(raw, int | float) or isinstance(raw, bool):
+                    raise SystemExit(f"{path}: metric {metric!r} has a non-numeric threshold")
+                if metric in bars and bars[metric] != float(raw):
+                    raise SystemExit(
+                        f"{path}: metric {metric!r} is given {raw} here and {bars[metric]} "
+                        "elsewhere in the same rubric. One metric, one bar."
+                    )
+                bars[metric] = float(raw)
+        if not bars:
+            raise SystemExit(f"{directory}: no metric has a threshold, so nothing is gated")
+        thresholds[rubric] = bars
+    return thresholds
+
+
+#: Per-rubric thresholds, read from the rubrics rather than written here. Gate precision is 1.0
+#: because a customer-facing gate that is right most of the time is worse than no gate: it is
+#: trusted. The reasoning for every bar lives beside it in ``eval/rubrics/``.
+THRESHOLDS: dict[str, dict[str, float]] = load_thresholds_from_rubrics()
 
 #: The registered Hrz4 metric bundle PER MODE. Two bundles, because two promotions.
 BUNDLES: dict[str, str] = {
@@ -98,6 +144,37 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
 
 def _mean(scores: Sequence[float]) -> float:
     return round(sum(scores) / len(scores), 4) if scores else 0.0
+
+
+#: Names the code that produced a report, so a stored artifact says what scored it.
+EVALUATOR = "contact-centre-conversations/eval/run_eval.py"
+
+
+def dataset_digest(path: Path) -> str:
+    """sha256 over the dataset bytes, so a report names the exact rows it scored.
+
+    The bytes rather than the parsed cases: a comment edit that changed no case still produces
+    a different corpus for a reviewer to diff, and pretending otherwise would let two reports
+    claim the same provenance for different files.
+    """
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _evidence(rubric: str, dataset: Path, cases: Sequence[Any]) -> dict[str, Any]:
+    """The provenance every report carries, filled rather than left blank.
+
+    ``n_examples`` is the load-bearing one: ``EvalReport.passed`` requires it to be positive,
+    which is what stops a run over zero cases reporting success. The rest is what makes the
+    verdict auditable afterwards: which rows, scored by what, on which run.
+    """
+    digest = dataset_digest(dataset)
+    return {
+        "n_examples": len(cases),
+        "dataset_digest": digest,
+        "dataset_version": _AS_OF.date().isoformat(),
+        "evaluator": EVALUATOR,
+        "run_id": f"{rubric}-{digest[:12]}-{_AS_OF.isoformat()}",
+    }
 
 
 def eval_settings(**overrides: Any) -> Settings:
@@ -196,7 +273,7 @@ def run_agent_assist(dataset: Path, settings: Settings | None = None) -> EvalRep
     thresholds = THRESHOLDS[AGENT_ASSIST]
     return EvalReport(
         dataset=str(dataset),
-        n_examples=len(cases),
+        **_evidence(AGENT_ASSIST, dataset, cases),
         results=(
             EvalMetricResult.scored(
                 "next_step_accuracy", _mean(next_step), thresholds["next_step_accuracy"]
@@ -317,7 +394,7 @@ def run_self_service(dataset: Path, settings: Settings | None = None) -> EvalRep
     thresholds = THRESHOLDS[SELF_SERVICE]
     return EvalReport(
         dataset=str(dataset),
-        n_examples=len(cases),
+        **_evidence(SELF_SERVICE, dataset, cases),
         results=(
             EvalMetricResult.scored(
                 "gate_precision", _mean(precision), thresholds["gate_precision"]

@@ -1,0 +1,30 @@
+# Scored by: eval/run_eval.py::run_agent_assist. `groundedness` checks each expected fact
+# appears in the reply AND in a real corpus passage, read straight from the corpus file rather
+# than from the pipeline's own citations. `citation_accuracy` is exact set equality against the
+# reviewer's expected passage ids, so citing a real-but-WRONG passage fails, which a presence
+# check could never catch.
+metric: groundedness
+description: >
+  Fraction of golden contacts whose suggested reply asserts only facts that a retrieved corpus
+  passage actually contains, with silence scored as correct where the reviewer expected silence.
+threshold: 1.0
+direction: maximize
+applies_to:
+  - EvalReport.results[groundedness]
+
+criteria:
+  - id: fact_in_reply
+    description: Every expected fact appears in the drafted reply.
+    weight: 0.5
+  - id: fact_in_corpus
+    description: Every expected fact also appears in the source corpus, independently checked.
+    weight: 0.5
+
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+
+companion_metrics:
+  citation_accuracy:
+    threshold: 1.0
+    description: Exact set equality with the expected passage ids, not mere presence.
