@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import Any
 
 import eval_schema
+import replay_generation
 import report_artifact
 import yaml
 from agent_eval_kit import EvalMetricResult, EvalReport, PromotionGateClient, print_report
@@ -826,6 +827,29 @@ def _quality_url() -> str:
 # --------------------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------------------- #
+def _drafter_settings(drafter: str) -> Settings | None:
+    """Settings that bind the named drafter, or None for the shipped offline one.
+
+    The replay adapter is bound here rather than in `config/settings.yaml` deliberately: nothing
+    a deployment binds should be able to serve pre-recorded answers to a customer.
+    """
+    if drafter == "local":
+        return None
+    if not replay_generation.FIXTURE.exists():
+        raise SystemExit(
+            f"--drafter {drafter} needs recorded model output at {replay_generation.FIXTURE}, "
+            "which is not present. Record it once with `CONTACT_PROFILE=gcp python "
+            "scripts/record_gemini_fixtures.py`, review it, and commit it."
+        )
+    base = eval_settings()
+    adapters = {port: dict(table) for port, table in base.adapters.items()}
+    adapters["generation"] = {
+        **adapters["generation"],
+        "local": "replay_generation:ReplayGenerationAdapter",
+    }
+    return eval_settings(adapters=adapters)
+
+
 def _artifact(rubric: str, report: EvalReport) -> report_artifact.EvalRunArtifact:
     """Fold one rubric's run into the browsable artifact, rollups and cases together."""
     cases = tuple(_DETAIL.get(rubric, ()))
@@ -871,6 +895,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override the dataset. Only meaningful with a single --rubric.",
     )
     parser.add_argument(
+        "--drafter",
+        choices=("local", "replay-gemini"),
+        default="local",
+        help=(
+            "local (default): the offline template drafter, which structurally cannot invent a "
+            "figure, so the citation and grounding metrics measure the VALIDATOR. "
+            "replay-gemini: the same rubrics and the same hand-written labels over recorded "
+            "managed-model output, replayed with nothing reachable. Requires the recording."
+        ),
+    )
+    parser.add_argument(
         "--emit",
         type=Path,
         default=None,
@@ -914,8 +949,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  PROMOTION GATE: {'PASS' if passed else 'FAIL'}")
             ok = ok and report.passed and passed
         else:
-            report = SMOKE[rubric](dataset)
-            print_report(report, f"{rubric} offline rubric (no cloud creds)")
+            report = SMOKE[rubric](dataset, _drafter_settings(args.drafter))
+            label = f"{rubric} offline rubric (no cloud creds)"
+            if args.drafter != "local":
+                label += f" [drafter: {args.drafter}]"
+            print_report(report, label)
             ok = ok and report.passed
             if args.emit is not None:
                 artifacts.append(_artifact(rubric, report))
