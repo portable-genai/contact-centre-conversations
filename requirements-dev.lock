@@ -60,7 +60,9 @@ hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@5b52b44d
 httpcore==1.0.9
     # via httpx
 httpx==0.28.1
-    # via agent-eval-kit
+    # via
+    #   agent-eval-kit
+    #   respx
 idna==3.19
     # via
     #   anyio
@@ -90,6 +92,8 @@ pygments==2.21.0
 pytest==9.1.1
     # via contact-centre-conversations
 pyyaml==6.0.3
+    # via contact-centre-conversations
+respx==0.23.1
     # via contact-centre-conversations
 review-kit @ git+https://github.com/portable-genai/review-kit@47c05c64fa115d9aa07c0f349be5ec5d807bbe95
     # via contact-centre-conversations
