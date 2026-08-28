@@ -14,12 +14,13 @@ what the fleet scanner greps for.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 import run_eval
+import yaml
 from agent_eval_kit import EvalMetricResult, EvalReport
+from eval_schema import ScenarioError
 
 
 def _perfect(metric: str = "groundedness") -> EvalMetricResult:
@@ -57,7 +58,7 @@ def test_the_runner_reports_the_dataset_s_own_example_count(rubric: str) -> None
     """The load-bearing field: a runner reporting zero would gate nothing and look green."""
     dataset = run_eval.DATASETS[rubric]
     report = run_eval.SMOKE[rubric](dataset)
-    assert report.n_examples == len(run_eval.load_cases(dataset))
+    assert report.n_examples == len(run_eval.load_scenarios(dataset, rubric))
     assert report.n_examples > 0
 
 
@@ -79,19 +80,20 @@ def test_two_datasets_with_different_bytes_get_different_digests(tmp_path: Path)
 
 
 # ------------------------------------------------------------------ the dataset side
-def test_an_empty_dataset_is_refused_rather_than_scored_as_perfect(tmp_path: Path) -> None:
-    empty = tmp_path / "empty.jsonl"
-    empty.write_text("", encoding="utf-8")
-    with pytest.raises(SystemExit, match="golden dataset is empty"):
-        run_eval.load_cases(empty)
+def test_an_empty_scenario_tree_is_refused_rather_than_scored_as_perfect(tmp_path: Path) -> None:
+    with pytest.raises(ScenarioError, match="no agent_assist scenario was loaded"):
+        run_eval.load_scenarios(tmp_path, run_eval.AGENT_ASSIST)
 
 
-def test_a_dataset_of_only_comments_is_empty_too(tmp_path: Path) -> None:
+def test_a_scenario_file_declaring_no_scenarios_is_refused(tmp_path: Path) -> None:
     """A file that LOOKS authored and contains no cases is the worse version of the above."""
-    commented = tmp_path / "comments.jsonl"
-    commented.write_text("# every case was removed\n#\n", encoding="utf-8")
-    with pytest.raises(SystemExit, match="golden dataset is empty"):
-        run_eval.load_cases(commented)
+    (tmp_path / "empty.yaml").write_text(
+        "mode: self_service\nmarket: SG\nlocale: en-SG\n"
+        "vertical: retail_banking\ntenant: demo-bank\nscenarios: []\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ScenarioError, match="declares no scenarios"):
+        run_eval.load_scenarios(tmp_path, run_eval.SELF_SERVICE)
 
 
 def test_an_unreadable_dataset_fails_the_run_rather_than_counting_zero(tmp_path: Path) -> None:
@@ -103,9 +105,15 @@ def test_an_unreadable_dataset_fails_the_run_rather_than_counting_zero(tmp_path:
 
 def test_the_cli_exits_non_zero_when_a_rubric_fails(tmp_path: Path) -> None:
     """The verdict has to reach the exit code, or nothing in CI notices it."""
-    rows = run_eval.load_cases(run_eval.DATASETS[run_eval.SELF_SERVICE])
-    for row in rows:
-        row["expected_outcome"] = "allow"
-    broken = tmp_path / "broken.jsonl"
-    broken.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
+    broken = tmp_path / "broken"
+    broken.mkdir()
+    for index, path in enumerate(sorted(run_eval.SCENARIOS.rglob("*.yaml"))):
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        for case in document.get("scenarios", []):
+            if document.get("mode") == run_eval.SELF_SERVICE:
+                for turn in case["turns"]:
+                    turn["expected_outcome"] = "allow"
+        (broken / f"{index:02d}.yaml").write_text(
+            yaml.safe_dump(document, sort_keys=False, allow_unicode=True), encoding="utf-8"
+        )
     assert run_eval.main(["--rubric", run_eval.SELF_SERVICE, "--dataset", str(broken)]) == 1

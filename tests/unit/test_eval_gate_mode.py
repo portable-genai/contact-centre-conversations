@@ -165,7 +165,7 @@ def test_the_authority_is_told_which_dataset_was_scored(monkeypatch: pytest.Monk
     )
     run_eval.main(["--mode", "gate", "--rubric", run_eval.SELF_SERVICE])
     body = json.loads(route.calls.last.request.content)
-    assert body["target"]["dataset_id"] == "self_service_golden"
+    assert body["target"]["dataset_id"] == run_eval.SCENARIOS.name
 
 
 # ------------------------------------------------------------- incomplete evidence fails closed
