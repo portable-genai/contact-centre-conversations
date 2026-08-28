@@ -17,6 +17,7 @@ ways it can fail:
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from speech_lexicon_kit import normalise
@@ -27,6 +28,11 @@ from ...domain.models import AUDIENCES, RetrievalQuery, RetrievedPassage
 
 #: Locale used to normalise the corpus and the query when the query names none.
 _FALLBACK_LOCALE = "en"
+
+#: Runs of script written without spaces between words: CJK ideographs, kana and Hangul.
+#: Text in these scripts yields one whitespace token per sentence, so it is scored by
+#: character bigrams instead. Latin text never matches, so nothing else changes.
+_UNSPACED = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]{2,}")
 
 
 class LocalFixtureRetrievalAdapter:
@@ -85,8 +91,24 @@ class LocalFixtureRetrievalAdapter:
 
     @staticmethod
     def _terms(text: str, locale: str) -> set[str]:
+        """Comparable units of ``text``, for scripts that space their words and scripts that do not.
+
+        Whitespace tokens carry the Latin-script markets. They carry nothing at all in Japanese,
+        which writes without spaces: a whole sentence folds to ONE token, so term overlap is
+        empty unless two passages are character-identical. A stand-in that structurally cannot
+        rank one of the markets this service claims to serve is not standing in for anything, it
+        is hiding the market, and every JP contact would have looked like a well-grounded silence.
+
+        So a run of unspaced script also contributes character bigrams. Crude, deterministic, and
+        enough for a fixture to rank: adjacent-character overlap is the standard cheap stand-in
+        for CJK segmentation, and nothing here pretends to be a tokeniser. Latin text produces no
+        such runs, so the SG corpus scores exactly as it did before.
+        """
         folded = normalise(text, locale).text
-        return {token for token in folded.split() if len(token) > 2}
+        terms = {token for token in folded.split() if len(token) > 2}
+        for run in _UNSPACED.findall(folded):
+            terms |= {run[index : index + 2] for index in range(len(run) - 1)}
+        return terms
 
     def retrieve(self, query: RetrievalQuery) -> list[RetrievedPassage]:
         locale = query.filters.get("locale") or _FALLBACK_LOCALE

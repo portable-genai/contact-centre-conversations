@@ -217,3 +217,37 @@ def test_the_replaced_passage_keeps_its_own_audience_when_copied() -> None:
     """``replace`` on a passage must not quietly reset the classification to the default."""
     original = _passage(AUDIENCE_INTERNAL)
     assert replace(original, score=0.9).audience == AUDIENCE_INTERNAL
+
+
+# ------------------------------------------------------------------ scripts without spaces
+def test_a_japanese_query_can_rank_a_japanese_passage(tmp_path) -> None:
+    """Japanese writes without spaces, so whitespace tokens fold a sentence into ONE term.
+
+    Before the bigram fallback, term overlap for ja-JP was empty unless two texts were
+    character-identical, so every JP contact produced no passages: a market this service claims
+    to serve looked exactly like a well-grounded silence. That is a hidden market, not a
+    stand-in.
+    """
+    corpus = tmp_path / "jp.jsonl"
+    corpus.write_text(
+        '{"passage_id": "kb-jp-001", "title": "紛失カード", '
+        '"text": "紛失したカードは直ちに'
+        '利用停止となります。", '
+        '"market": "JP", "locale": "ja-JP", "audience": "public", "source_ref": "ref"}\n',
+        encoding="utf-8",
+    )
+    adapter = build_container(local_settings(kb_path=str(corpus))).retrieval
+    query = suggestions.build_query(
+        "カードを紛失しました",
+        market="JP",
+        locale="ja-JP",
+        mode=ContactMode.SELF_SERVICE,
+    )
+    assert [p.citation.source_id for p in adapter.retrieve(query)] == ["kb-jp-001"]
+
+
+def test_latin_scoring_is_untouched_by_the_unspaced_fallback() -> None:
+    """The fallback must add nothing where words are already spaced, or every SG score moves."""
+    adapter = build_container(local_settings()).retrieval
+    terms = adapter._terms("the card balance is posted", "en-SG")
+    assert terms == {"the", "card", "balance", "posted"}
