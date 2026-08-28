@@ -107,8 +107,12 @@ portability:
 	$(PYRUN) scripts/portability_demo.py
 
 # Relative links resolve, code fences close, no em-dash or en-dash in shipped prose.
+evals-doc:
+	$(PYRUN) scripts/render_evals_doc.py
+
 docs-check:
 	$(PYRUN) scripts/check_docs_links.py
+	$(PYRUN) scripts/render_evals_doc.py --check
 
 # The deploy posture, checked WITHOUT a cloud. `-backend=false` skips the state bucket, so this
 # needs no credentials, no project and no remote state; `terraform test` runs against a mocked
