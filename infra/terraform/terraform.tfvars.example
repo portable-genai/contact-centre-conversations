@@ -117,13 +117,13 @@ production_edge_enabled = false
 # iap_audience = "/projects/123456789012/global/backendServices/1234567890123456789"
 
 # Credentials arrive as pinned Secret Manager versions, never as values here. The
-# inbound token is what a calling service presents to this one; the HRZ_* pair
+# inbound token is what a calling service presents to this one; the platform pair
 # authenticates the outbound calls to Hrz1, Hrz2 and the action catalog, and the
-# HRZ7_* pair the outbound calls to the review console.
+# HUMAN_REVIEW_S2S_* pair the outbound calls to the review console.
 # additional_secret_env = {
 #   CONTACT_S2S_TOKEN    = { secret_id = "contact-inbound-s2s", version = "3" }
-#   HRZ_S2S_TOKEN        = { secret_id = "hrz-outbound-s2s", version = "2" }
-#   HRZ_S2S_SIGNING_KEY  = { secret_id = "hrz-actor-signing", version = "1" }
-#   HRZ7_S2S_TOKEN       = { secret_id = "hrz7-outbound-s2s", version = "2" }
-#   HRZ7_S2S_SIGNING_KEY = { secret_id = "hrz7-actor-signing", version = "1" }
+#   S2S_TOKEN        = { secret_id = "hrz-outbound-s2s", version = "2" }
+#   S2S_SIGNING_KEY  = { secret_id = "hrz-actor-signing", version = "1" }
+#   HUMAN_REVIEW_S2S_TOKEN       = { secret_id = "hrz7-outbound-s2s", version = "2" }
+#   HUMAN_REVIEW_S2S_SIGNING_KEY = { secret_id = "hrz7-actor-signing", version = "1" }
 # }

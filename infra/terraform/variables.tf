@@ -314,7 +314,7 @@ variable "self_service_promotion_bundle" {
 variable "human_review_url" {
   description = <<-EOT
     The Hrz7 human-review console the managed review router submits escalations to
-    (HRZ_HUMAN_REVIEW_URL). Rule R8 says an escalation is ROUTED and never merely flagged, and
+    (HUMAN_REVIEW_URL). Rule R8 says an escalation is ROUTED and never merely flagged, and
     the managed router refuses rather than swallowing one when this is empty, so the serving
     edge requires it: a deploy that would ship R8 unwired fails here instead of at the first
     escalation. HTTPS is required, because the payload carries a redacted contact.
@@ -336,7 +336,7 @@ variable "human_review_url" {
 variable "guardrail_url" {
   description = <<-EOT
     The Hrz1 Agent Guardrail Gateway every inbound turn is screened through after redaction
-    (HRZ_GUARDRAIL_URL, rule R1). The serving edge requires it: screening is not optional on
+    (GUARDRAIL_GATEWAY_URL, rule R1). The serving edge requires it: screening is not optional on
     this service, only a CLEAN screen may reach retrieval or generation, and a screen that
     cannot answer is UNAVAILABLE and fails closed per mode. With this empty the managed
     adapter refuses at the first turn, so the refusal belongs at plan time instead.
@@ -358,7 +358,7 @@ variable "guardrail_url" {
 variable "retrieval_url" {
   description = <<-EOT
     The Hrz2 governed-RAG service the managed retrieval adapter queries
-    (HRZ_KNOWLEDGE_BASE_URL, rule R3). The serving edge requires it: a suggested reply is
+    (KNOWLEDGE_BASE_URL, rule R3). The serving edge requires it: a suggested reply is
     grounded in retrieved passages or it is not produced at all, and the managed adapter
     refuses an unconfigured index rather than answering from the model's own memory.
   EOT
@@ -444,8 +444,8 @@ variable "additional_secret_env" {
   description = <<-EOT
     Environment variable name to an immutable existing Secret Manager secret version, mounted
     on the API service. This is how the inbound service credential (CONTACT_S2S_TOKEN) and the
-    outbound credentials (HRZ_S2S_TOKEN and HRZ_S2S_SIGNING_KEY for Hrz1, Hrz2 and the action
-    catalog; HRZ7_S2S_TOKEN and HRZ7_S2S_SIGNING_KEY for the review console) reach the
+    outbound credentials (S2S_TOKEN and S2S_SIGNING_KEY for Hrz1, Hrz2 and the action
+    catalog; HUMAN_REVIEW_S2S_TOKEN and HUMAN_REVIEW_S2S_SIGNING_KEY for the review console) reach the
     process: no secret value is ever written into this configuration. Names this stack sets
     itself are reserved, so a secret cannot silently shadow the residency, identity, mode or
     routing wiring.
@@ -474,9 +474,9 @@ variable "additional_secret_env" {
         "CONTACT_TOOL_CATALOG_URL",
         "GOOGLE_CLOUD_PROJECT",
         "GCP_REGION",
-        "HRZ_GUARDRAIL_URL",
-        "HRZ_HUMAN_REVIEW_URL",
-        "HRZ_KNOWLEDGE_BASE_URL",
+        "GUARDRAIL_GATEWAY_URL",
+        "HUMAN_REVIEW_URL",
+        "KNOWLEDGE_BASE_URL",
         "OTEL_EXPORTER_OTLP_ENDPOINT",
         "PORT",
       ], name)

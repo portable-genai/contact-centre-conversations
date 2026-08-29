@@ -1,7 +1,7 @@
 # outputs.tf: the values an operator needs after apply.
 #
 # Each one maps onto a setting the application reads (config/settings.yaml interpolates the
-# CONTACT_* , HRZ_* and GCP_* names), so a deploy is "apply, then put these in the runtime
+# CONTACT_* , platform and GCP_* names), so a deploy is "apply, then put these in the runtime
 # environment". When the serving edge is enabled, Terraform already sets them on the Cloud Run
 # service; the outputs are what a second-line reviewer reads, and what a hand-run or
 # on-premises bridge needs.
