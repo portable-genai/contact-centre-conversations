@@ -91,7 +91,7 @@ No secret value is committed. `config/settings.yaml` and `.env.example` carry na
 non-secret defaults; `.env.secrets.example` carries the NAMES with placeholder values, and
 `tests/unit/test_repo_artifacts.py` fails the build if a real-looking value appears in either.
 Inbound and outbound credentials are deliberately distinct variables: this service's own
-`CONTACT_S2S_TOKEN` is not the `HRZ7_S2S_TOKEN` it presents to the review console.
+`CONTACT_S2S_TOKEN` is not the `HUMAN_REVIEW_S2S_TOKEN` it presents to the review console.
 `tests/unit/test_outbound_s2s_credentials.py` keeps the two apart.
 
 Every security-relevant environment read resolves three states. Unset, set-and-empty and

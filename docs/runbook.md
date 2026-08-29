@@ -194,8 +194,8 @@ loopback bound off a derived `bind_profile`, because those two fail closed in op
 see `config.ProfileChoice`.
 
 ## Human review routing (rule R8)
-Set `HRZ_HUMAN_REVIEW_URL` to the Hrz7 console (HTTPS is required off loopback) and provide
-`HRZ7_S2S_TOKEN`; `HRZ7_S2S_SIGNING_KEY` optionally signs the propagated actor. These are the
+Set `HUMAN_REVIEW_URL` to the Hrz7 console (HTTPS is required off loopback) and provide
+`HUMAN_REVIEW_S2S_TOKEN`; `HUMAN_REVIEW_S2S_SIGNING_KEY` optionally signs the propagated actor. These are the
 OUTBOUND credentials and are deliberately distinct from this service's own inbound
 `CONTACT_S2S_TOKEN`. With the URL unset, the managed router REFUSES rather
 than swallowing the escalation, so a misconfiguration is a loud failure and never a silent
@@ -205,10 +205,10 @@ inspectable and flushes to the console when one becomes reachable.
 ## Outbound credentials for the sibling services (rules R1 and R3)
 The Hrz1 guardrail screen, the Hrz2 governed index and the MCP action catalog are reached over
 one shared S2S transport (`adapters/gcp/_s2s.py`) and share ONE credential pair:
-`HRZ_S2S_TOKEN` is the bearer, `HRZ_S2S_SIGNING_KEY` optionally signs the propagated actor.
-Both are OUTBOUND, like the `HRZ7_*` pair above and unlike this service's own inbound
+`S2S_TOKEN` is the bearer, `S2S_SIGNING_KEY` optionally signs the propagated actor.
+Both are OUTBOUND, like the `HUMAN_REVIEW_S2S_*` pair above and unlike this service's own inbound
 `CONTACT_S2S_TOKEN`, and both belong in `.env.secrets` (see `.env.secrets.example`). The URLs
-they authenticate against are `HRZ_GUARDRAIL_URL`, `HRZ_KNOWLEDGE_BASE_URL` and
+they authenticate against are `GUARDRAIL_GATEWAY_URL`, `KNOWLEDGE_BASE_URL` and
 `CONTACT_TOOL_CATALOG_URL` in `.env`, which are not secret and are documented there.
 
 They fail the way the R8 pair does, which is the point: both outbound pairs refuse rather than
@@ -221,13 +221,13 @@ refusal happens before the socket is opened:
 
 | Missing value | What happens |
 |---|---|
-| `HRZ_S2S_TOKEN` unset, sibling NOT on loopback | `ValueError` naming the variable, raised before the request leaves. Each caller turns it into a fail-closed verdict (an unavailable screen, an unreachable index). Symptom: turns refused as unavailable, with the variable named in the log and no 401 at the far end because nothing was sent. Fix: set the secret. |
-| `HRZ_S2S_TOKEN` unset, sibling on loopback | Accepted, and no `Authorization` header is attached. This is the offline zero-secret posture, the same carve-out that lets a loopback base URL be plain `http`. |
-| `HRZ_S2S_TOKEN` emptied (`""` or whitespace) | `ConfiguredEmptyError` naming the variable, wherever the sibling is, loopback included. An emptied variable is an expressed intent that names no credential and never inherits the unset behaviour. Common cause: a config map or deployment template that renders an empty string. |
-| `HRZ_S2S_SIGNING_KEY` unset | Accepted. The signed-actor pair is omitted rather than sent unsigned, so the sibling sees a service call carrying no end-user actor. Calls still succeed; per-actor attribution at the far end is what is lost. |
-| `HRZ_S2S_SIGNING_KEY` emptied | `ConfiguredEmptyError`, for the same reason as the token. Absent is a posture; blank is a mistake. |
+| `S2S_TOKEN` unset, sibling NOT on loopback | `ValueError` naming the variable, raised before the request leaves. Each caller turns it into a fail-closed verdict (an unavailable screen, an unreachable index). Symptom: turns refused as unavailable, with the variable named in the log and no 401 at the far end because nothing was sent. Fix: set the secret. |
+| `S2S_TOKEN` unset, sibling on loopback | Accepted, and no `Authorization` header is attached. This is the offline zero-secret posture, the same carve-out that lets a loopback base URL be plain `http`. |
+| `S2S_TOKEN` emptied (`""` or whitespace) | `ConfiguredEmptyError` naming the variable, wherever the sibling is, loopback included. An emptied variable is an expressed intent that names no credential and never inherits the unset behaviour. Common cause: a config map or deployment template that renders an empty string. |
+| `S2S_SIGNING_KEY` unset | Accepted. The signed-actor pair is omitted rather than sent unsigned, so the sibling sees a service call carrying no end-user actor. Calls still succeed; per-actor attribution at the far end is what is lost. |
+| `S2S_SIGNING_KEY` emptied | `ConfiguredEmptyError`, for the same reason as the token. Absent is a posture; blank is a mistake. |
 
-The `HRZ7_*` pair behaves the same way, resolved through the review kit's own three-state reader
+The `HUMAN_REVIEW_S2S_*` pair behaves the same way, resolved through the review kit's own three-state reader
 and refused at client construction for any non-loopback console, so neither outbound pair can
 leave unauthenticated. `tests/unit/test_outbound_s2s_credentials.py` holds this table to the
 behaviour, and `tests/unit/test_three_state_env_reads.py` fails the build if a future adapter
@@ -320,7 +320,7 @@ Failure modes to expect:
 `make test-integration` runs `tests/integration/`, which the offline gate deselects. Each test
 SKIPS rather than fails when its configuration is absent, so an unconfigured run reports nothing
 rather than a false pass. It writes an obviously fictional audit record to the configured project
-and, when `HRZ_HUMAN_REVIEW_URL` is set, submits one fictional review to the live console.
+and, when `HUMAN_REVIEW_URL` is set, submits one fictional review to the live console.
 
 ## Alerts
 `infra/terraform/monitoring.tf` creates a log-based metric and an alert policy for each posture

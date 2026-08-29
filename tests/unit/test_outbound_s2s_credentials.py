@@ -3,7 +3,7 @@
 `adapters/gcp/_s2s.py` carries the credentials the Hrz1 guardrail screen (rule R1), the Hrz2
 governed index (rule R3) and the MCP action catalog present to their siblings. Both were read by
 `hex_service_kit.s2s.client_headers`, which stripped a value before it tested it, so UNSET and
-SET-AND-EMPTY were ONE state: an operator who deliberately emptied `HRZ_S2S_TOKEN` got exactly
+SET-AND-EMPTY were ONE state: an operator who deliberately emptied `S2S_TOKEN` got exactly
 what an operator who never set it got, which is a call leaving with no `Authorization` header on
 it at all. Nothing in this process refused, and the symptom was a 401 at the far end.
 

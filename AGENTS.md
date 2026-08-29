@@ -127,7 +127,7 @@ Hexagonal, ports and adapters:
   that never says `os.environ` is still a read**, which is the same blind spot a third time: the
   Python scan also fails the build on any env var NAME handed to a reader that resolves only two
   states (`TWO_STATE_DELEGATING_READERS`) unless the same module resolved that name first. The
-  outbound `HRZ_S2S_TOKEN` / `HRZ_S2S_SIGNING_KEY` pair was invisible to the scan until it was,
+  outbound `S2S_TOKEN` / `S2S_SIGNING_KEY` pair was invisible to the scan until it was,
   and an emptied credential silently sent no `Authorization` header at all. That registry is
   EMPTY today: its one entry, `hex_service_kit.s2s.client_headers`, resolves three states itself
   in the pinned commons, so `adapters/gcp/_s2s.py` carries no local resolution of its own rather

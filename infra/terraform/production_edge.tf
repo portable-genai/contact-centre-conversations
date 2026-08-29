@@ -120,19 +120,19 @@ resource "google_cloud_run_v2_service" "api" {
       # Rule R8: the console an escalation is routed to. Required whenever the edge is enabled
       # (variables.tf), because the managed router refuses rather than swallowing one.
       env {
-        name  = "HRZ_HUMAN_REVIEW_URL"
+        name  = "HUMAN_REVIEW_URL"
         value = var.human_review_url
       }
       # Rule R1: the gateway every inbound turn is screened through after redaction. Also
       # required whenever the edge is enabled: only a CLEAN screen may reach retrieval or
       # generation, so an unconfigured gateway is a service that cannot handle one turn.
       env {
-        name  = "HRZ_GUARDRAIL_URL"
+        name  = "GUARDRAIL_GATEWAY_URL"
         value = var.guardrail_url
       }
       # Rule R3: the governed knowledge base a suggested reply must be grounded in.
       env {
-        name  = "HRZ_KNOWLEDGE_BASE_URL"
+        name  = "KNOWLEDGE_BASE_URL"
         value = var.retrieval_url
       }
 

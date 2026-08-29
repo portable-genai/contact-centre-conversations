@@ -226,17 +226,17 @@ run "serving_edge_contract" {
   }
 
   assert {
-    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "HRZ_HUMAN_REVIEW_URL"]) == var.human_review_url
+    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "HUMAN_REVIEW_URL"]) == var.human_review_url
     error_message = "Rule R8: the service must be told where an escalation is routed, or the managed router refuses."
   }
 
   assert {
-    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "HRZ_GUARDRAIL_URL"]) == var.guardrail_url
+    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "GUARDRAIL_GATEWAY_URL"]) == var.guardrail_url
     error_message = "Rule R1: the service must be told which gateway screens every inbound turn, or it cannot handle one."
   }
 
   assert {
-    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "HRZ_KNOWLEDGE_BASE_URL"]) == var.retrieval_url
+    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "KNOWLEDGE_BASE_URL"]) == var.retrieval_url
     error_message = "Rule R3: the service must be told which governed index grounds a suggestion."
   }
 
@@ -492,7 +492,7 @@ run "reject_reserved_secret_override" {
     project_id    = "fictional-contact-sg"
     enable_vpc_sc = false
     additional_secret_env = {
-      HRZ_GUARDRAIL_URL = {
+      GUARDRAIL_GATEWAY_URL = {
         secret_id = "wrong-gateway"
         version   = "1"
       }
@@ -509,7 +509,7 @@ run "reject_moving_secret_version" {
     project_id    = "fictional-contact-sg"
     enable_vpc_sc = false
     additional_secret_env = {
-      HRZ7_S2S_TOKEN = {
+      HUMAN_REVIEW_S2S_TOKEN = {
         secret_id = "hrz7-outbound-s2s"
         version   = "latest"
       }

@@ -39,9 +39,9 @@ iap_audience: ${CONTACT_IAP_AUDIENCE:-}
 
 # Rule R8: where an escalated result is routed for human review. The managed profile REFUSES to
 # swallow an escalation when this is empty, so a producer cannot ship with R8 unwired.
-# The outbound S2S credentials are HRZ7_S2S_TOKEN / HRZ7_S2S_SIGNING_KEY (see .env.secrets.example),
+# The outbound S2S credentials are HUMAN_REVIEW_S2S_TOKEN / HUMAN_REVIEW_S2S_SIGNING_KEY (see .env.secrets.example),
 # deliberately distinct from this service's own inbound CONTACT_S2S_TOKEN.
-review_url: ${HRZ_HUMAN_REVIEW_URL:-}
+review_url: ${HUMAN_REVIEW_URL:-}
 
 # The two separately gated modes. BOTH DEFAULT OFF: a deployment that configured nothing serves
 # neither, and `domain/modes.py` resolves each flag in THREE states. The `:-off` below is the
@@ -76,8 +76,8 @@ streams_path: ${CONTACT_STREAMS_PATH:-config/streams}
 
 # Sibling services the platform-remote adapters call. Empty means unconfigured, and an
 # unconfigured remote dependency REFUSES at the adapter rather than defaulting to localhost.
-retrieval_url: ${HRZ_KNOWLEDGE_BASE_URL:-}
-guardrail_url: ${HRZ_GUARDRAIL_URL:-}
+retrieval_url: ${KNOWLEDGE_BASE_URL:-}
+guardrail_url: ${GUARDRAIL_GATEWAY_URL:-}
 tool_catalog_url: ${CONTACT_TOOL_CATALOG_URL:-}
 party_records_url: ${CONTACT_PARTY_RECORDS_URL:-}
 

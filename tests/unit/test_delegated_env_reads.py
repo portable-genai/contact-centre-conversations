@@ -2,7 +2,7 @@
 
 `tests/unit/test_three_state_env_reads.py` matches syntax, so a module that hands an env var NAME
 to a library function which reads it on the module's behalf is invisible to it: let
-`adapters/gcp/_s2s.py` name `HRZ_S2S_TOKEN` and `HRZ_S2S_SIGNING_KEY` and pass both to a
+`adapters/gcp/_s2s.py` name `S2S_TOKEN` and `S2S_SIGNING_KEY` and pass both to a
 `client_headers` whose `os.environ.get(name, "").strip()` collapses the two states, and the
 collapse sits inside the commons where no scan here can see it. An emptied credential then
 inherits the unset behaviour (no `Authorization` header at all, the call leaving

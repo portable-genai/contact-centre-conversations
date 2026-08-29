@@ -9,7 +9,7 @@ end-user actor.
 Every read here resolves THREE states, and that is the commons' own work rather than this
 module's. A header builder that takes env var NAMES and strips a value before it tests it
 collapses UNSET and SET-AND-EMPTY into ONE state: neither attaches an ``Authorization`` header,
-so an operator who deliberately emptied ``HRZ_S2S_TOKEN`` gets exactly what an operator who
+so an operator who deliberately emptied ``S2S_TOKEN`` gets exactly what an operator who
 never set it gets, silently. ``client_headers`` raises ``ConfiguredEmptyError`` for an emptied
 credential instead, which is why this module does not resolve the names itself: a rule kept in
 two places drifts in two places, and a local copy reading through the very same
@@ -38,10 +38,10 @@ from hex_service_kit.s2s import client_headers, validate_base_url
 
 #: Env var holding the bearer credential for outbound S2S calls. Required for a non-loopback
 #: sibling, refused when emptied, and never inherited from the unset state.
-TOKEN_ENV = "HRZ_S2S_TOKEN"
+TOKEN_ENV = "S2S_TOKEN"
 #: Env var holding the HMAC key for signing the propagated end-user actor. Optional when unset
 #: (the pair is omitted rather than sent unsigned), refused when emptied.
-SIGNING_KEY_ENV = "HRZ_S2S_SIGNING_KEY"
+SIGNING_KEY_ENV = "S2S_SIGNING_KEY"
 _ACTOR_HEADER = "X-Cc-Actor"
 _ACTOR_SIG_HEADER = "X-Cc-Actor-Sig"
 
