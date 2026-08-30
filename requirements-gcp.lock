@@ -56,7 +56,11 @@ google-api-core==2.34.0
     # via
     #   google-cloud-appengine-logging
     #   google-cloud-core
+    #   google-cloud-dialogflow-cx
+    #   google-cloud-firestore
     #   google-cloud-logging
+    #   google-cloud-speech
+    #   google-cloud-texttospeech
     #   google-cloud-trace
 google-auth==2.57.0
     # via
@@ -64,7 +68,11 @@ google-auth==2.57.0
     #   google-api-core
     #   google-cloud-appengine-logging
     #   google-cloud-core
+    #   google-cloud-dialogflow-cx
+    #   google-cloud-firestore
     #   google-cloud-logging
+    #   google-cloud-speech
+    #   google-cloud-texttospeech
     #   google-cloud-trace
     #   hex-service-kit
 google-cloud-appengine-logging==1.10.0
@@ -72,8 +80,18 @@ google-cloud-appengine-logging==1.10.0
 google-cloud-audit-log==0.6.2
     # via google-cloud-logging
 google-cloud-core==2.7.0
-    # via google-cloud-logging
+    # via
+    #   google-cloud-firestore
+    #   google-cloud-logging
+google-cloud-dialogflow-cx==2.7.0
+    # via contact-centre-conversations
+google-cloud-firestore==2.29.0
+    # via contact-centre-conversations
 google-cloud-logging==3.16.3
+    # via contact-centre-conversations
+google-cloud-speech==2.40.0
+    # via contact-centre-conversations
+google-cloud-texttospeech==2.37.0
     # via contact-centre-conversations
 google-cloud-trace==1.20.0
     # via opentelemetry-exporter-gcp-trace
@@ -90,7 +108,11 @@ grpcio==1.83.1
     # via
     #   google-api-core
     #   google-cloud-appengine-logging
+    #   google-cloud-dialogflow-cx
+    #   google-cloud-firestore
     #   google-cloud-logging
+    #   google-cloud-speech
+    #   google-cloud-texttospeech
     #   google-cloud-trace
     #   googleapis-common-protos
     #   grpc-google-iam-v1
@@ -146,14 +168,22 @@ proto-plus==1.28.4
     # via
     #   google-api-core
     #   google-cloud-appengine-logging
+    #   google-cloud-dialogflow-cx
+    #   google-cloud-firestore
     #   google-cloud-logging
+    #   google-cloud-speech
+    #   google-cloud-texttospeech
     #   google-cloud-trace
 protobuf==7.36.0
     # via
     #   google-api-core
     #   google-cloud-appengine-logging
     #   google-cloud-audit-log
+    #   google-cloud-dialogflow-cx
+    #   google-cloud-firestore
     #   google-cloud-logging
+    #   google-cloud-speech
+    #   google-cloud-texttospeech
     #   google-cloud-trace
     #   googleapis-common-protos
     #   grpc-google-iam-v1
