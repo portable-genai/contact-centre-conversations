@@ -52,6 +52,13 @@ gcp = [
   "hex-service-kit[otel] @ git+https://github.com/portable-genai/hex-service-kit@v0.0.6",
   "google-cloud-logging>=3.0",
   "google-auth>=2.0",
+  # Bound as the gcp implementation in config/settings.yaml and imported LAZILY by the
+  # adapters, so each module imported clean while its port was DEAD on the managed
+  # profile. Found by the lint-gcp job, the first check able to see these imports.
+  "google-cloud-dialogflow-cx>=2.0",
+  "google-cloud-firestore>=2.0",
+  "google-cloud-speech>=2.0",
+  "google-cloud-texttospeech>=2.0",
 ]
 
 [project.scripts]
