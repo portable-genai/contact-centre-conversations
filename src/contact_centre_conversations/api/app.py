@@ -426,6 +426,8 @@ def healthz() -> HealthResponse:
             )
             for gate in gates
         ],
+        runtime=settings.runtime,
+        generator_model=settings.generator_model,
     )
 
 
