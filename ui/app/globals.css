@@ -165,3 +165,12 @@ section ul {
 section li {
   margin: 0.2rem 0;
 }
+
+.provenance-banner {
+  margin: -32px -18px 20px;
+  padding: 5px 18px;
+  border-bottom: 1px solid var(--ink-200);
+  background: var(--ink-100);
+  color: var(--ink-500);
+  font-size: 12px;
+}
