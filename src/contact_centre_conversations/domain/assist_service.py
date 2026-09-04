@@ -15,8 +15,8 @@ What the panel carries and who decided it:
 | review banner        | a missed disclosure window, deterministically |
 
 A missed disclosure window is the consequential outcome of this mode: it sets
-``requires_human_review`` and routes to Hrz7 under rule R8 in the same call that produced it.
-Setting the flag is not the escalation; routing is.
+``requires_human_review`` and routes to human-review-console under rule R8 in the same call that
+produced it. Setting the flag is not the escalation; routing is.
 """
 
 from __future__ import annotations

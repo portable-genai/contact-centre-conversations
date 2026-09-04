@@ -25,7 +25,7 @@ One repository, one shared kernel, TWO separately gated modes.
   refuses everything else, and hands off to a person with the context carried over.
 
 The kernel they share is transcripts, the knowledge base and the audit trail. Everything else is
-per mode, and the two modes are separate Hrz4 gated releases because their risk postures differ:
+per mode, and the two modes are separate `model-quality-gate` gated releases because their risk postures differ:
 one is internal decision-support with a trained human in the loop, the other reaches a member of
 the public directly.
 
@@ -48,7 +48,7 @@ the public directly.
   author wrote. The model does not rank steps, paraphrase them or see the engine's inputs.
 - **Disclosure timing is arithmetic**: trigger offsets plus the pack's window. A reminder never
   fires before its trigger. A window that closes unsatisfied is MISSED, which sets
-  `requires_human_review` and routes to Hrz7 under R8. Where the transcript carries turn timings
+  `requires_human_review` and routes to `human-review-console` under R8. Where the transcript carries turn timings
   but no word timings the engine falls back to the TURN's bounds, which can only report a
   disclosure as later than it was, never earlier.
 - **The self-service gate is two fail-closed allowlists**, per tenant and market: the intents it
@@ -80,7 +80,7 @@ the public directly.
   confidence, the gate outcome, the action decision and the handoff trigger are pure stdlib and
   replayable; a model may draft a cited suggestion and produces nothing else.
 - **Maker-checker (P-06) and routing (R8)**: a missed disclosure window or a consequential action
-  sets `requires_human_review=True` AND is routed through `ReviewRouterPort` to the Hrz7 console
+  sets `requires_human_review=True` AND is routed through `ReviewRouterPort` to the `human-review-console`
   in the same call. The review is TAGGED with the mode that produced it, in the action and in the
   segregation-of-duty group, so one mode's checkers cannot sign off the other's escalations. The flag alone is not the escalation. The response carries `review_ref`, so a
   caller can tell a routed escalation from one that stopped here. The managed adapter refuses to
@@ -131,7 +131,7 @@ the public directly.
   "lost".
 - **Eval**: TWO rubric sets, reported SEPARATELY, because the two modes promote separately.
   `--rubric agent_assist|self_service|both`; `--mode smoke` is the offline pre-merge check and
-  `--mode gate` is the Hrz4 promotion authority for the named rubric's own bundle. Every metric
+  `--mode gate` is the `model-quality-gate` promotion authority for the named rubric's own bundle. Every metric
   scores against the dataset's own expected label, never against the pipeline's verdict, and
   every metric is proved able to go red.
 - **Tests**: split into `unit`, `contract` and `integration`. The offline gate runs the first
@@ -139,7 +139,7 @@ the public directly.
 
 ## Metrics and thresholds (smoke)
 
-Two rubric sets, reported separately. Each Hrz4 promotion gate consumes only its own bundle
+Two rubric sets, reported separately. Each `model-quality-gate` promotion gate consumes only its own bundle
 (`contact-centre-conversations-agent-assist`, `contact-centre-conversations-self-service`), so a strong result
 in one mode can never carry the other over the line.
 

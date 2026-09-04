@@ -8,15 +8,14 @@ call by a model.
 
 Four outcomes, and the difference between the last two is the honest part:
 
-* ``SATISFIED`` : the wording, from the right speaker, inside the window.
-* ``PENDING``   : triggered, still inside the window, contact still live. This is what the
-  whisper panel shows as a reminder.
-* ``MISSED``    : the window closed and nothing matched. Consequential: the report sets
-  ``requires_human_review`` and the caller routes it to Hrz7 under rule R8. A missed disclosure
-  is a regulatory event, not a UI state.
-* ``UNVERIFIABLE`` : the transcript carries no timings at all and the pack sets a timed window,
-  so nothing here can answer the question. Reporting SATISFIED or MISSED from an absent clock
-  would be inventing evidence in whichever direction the default happened to point.
+* ``SATISFIED`` : the wording, from the right speaker, inside the window. * ``PENDING``   :
+  triggered, still inside the window, contact still live. This is what the whisper panel shows as a
+  reminder. * ``MISSED``    : the window closed and nothing matched. Consequential: the report sets
+  ``requires_human_review`` and the caller routes it to human-review-console under rule R8. A missed
+  disclosure is a regulatory event, not a UI state. * ``UNVERIFIABLE`` : the transcript carries no
+  timings at all and the pack sets a timed window, so nothing here can answer the question.
+  Reporting SATISFIED or MISSED from an absent clock would be inventing evidence in whichever
+  direction the default happened to point.
 
 **A reminder never fires without its trigger.** ``due_from_ms`` is None until the trigger event
 is evidenced, and a status with no ``due_from_ms`` is never due. That property is what the

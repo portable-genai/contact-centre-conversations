@@ -5,10 +5,10 @@ profile refusal, not the three-state service URL, not which bundle each mode ask
 what happens when the authority answers with something incomplete. That is the half of the eval
 that decides whether a release may ship, so it is the half most worth proving.
 
-Everything here is offline. ``respx`` mocks the wire, so no test needs a reachable Hrz4, and the
-bodies are the COMPLETE attested GateDecision the client demands rather than a naked
-``{"passed": true}``. Building the real shape is deliberate: a fixture that only had to satisfy
-a boolean would let the client's evidence requirements rot without anything noticing.
+Everything here is offline. ``respx`` mocks the wire, so no test needs a reachable
+model-quality-gate, and the bodies are the COMPLETE attested GateDecision the client demands rather
+than a naked ``{"passed": true}``. Building the real shape is deliberate: a fixture that only had to
+satisfy a boolean would let the client's evidence requirements rot without anything noticing.
 """
 
 from __future__ import annotations

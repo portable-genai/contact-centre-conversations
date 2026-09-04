@@ -11,7 +11,7 @@
 #     adapter writes AuditEvent as a struct payload, so jsonPayload.decision is "escalated" or
 #     "allowed" (domain/kernel.py Decision), jsonPayload.severity carries the band and
 #     jsonPayload.mode carries the mode that produced the record. The escalation signal is
-#     SPLIT BY MODE deliberately: the two modes are separately gated Hrz4 releases with
+#     SPLIT BY MODE deliberately: the two modes are separately gated model-quality-gate releases with
 #     different risk postures, and a self-service escalation means something reached a member
 #     of the public that a person now has to look at, while an agent-assist one means a trained
 #     agent already had it in front of them. Summing them into one number would make the second
@@ -24,11 +24,11 @@
 #   - edge_denials : Cloud Armor denied or throttled a request at the edge.
 #
 # There is deliberately no guardrail-block metric, and NOT because this service has no
-# guardrail: every inbound turn is screened through the Hrz1 gateway (rule R1). The block is
+# guardrail: every inbound turn is screened through the agent-guardrail-gateway (rule R1). The block is
 # decided and recorded THERE, and the AuditEvent this service writes carries no field naming
 # it, so a filter here would have to pattern-match the prose summary. A control that parses
 # prose breaks on a wording change and reads as a green light nobody earned. Alert on blocks in
-# Hrz1, where the field exists; add a metric here in the same commit that puts the screen
+# agent-guardrail-gateway, where the field exists; add a metric here in the same commit that puts the screen
 # outcome on the audit record.
 #
 # Alert policies are always created; var.alert_notification_channels attaches the channels.

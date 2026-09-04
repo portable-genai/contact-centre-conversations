@@ -89,7 +89,7 @@ package, so `--package` renames both and a second flag could only drift out of s
 `--dist` flag either: the distribution name, the GitHub id in `[project.urls]` and the A2A
 agent-card name are the same one literal, and `--resource` renames it.
 
-One thing the script does NOT rename, on purpose: the Hrz4 promotion bundle ids
+One thing the script does NOT rename, on purpose: the `model-quality-gate` promotion bundle ids
 (`CONTACT_AGENT_ASSIST_BUNDLE`, `CONTACT_SELF_SERVICE_BUNDLE`) are deployment values rather than
 source literals, and a promotion record that silently changed identity would be worse than one
 you had to set by hand. Set them yourself, per mode. Add `--include-docs` to sweep Markdown prose
@@ -130,11 +130,11 @@ too. The script deliberately does NOT touch the human decisions below.
    `domain/packs.py` validates at boot and stops the process on a bad pack, including dangling
    references between procedure steps.
 5. **The knowledge base.** Under `local` the corpus is a JSON Lines fixture at `kb_path`. Under
-   `gcp` and the platform family, retrieval goes to Hrz2 at `retrieval_url`, and an unconfigured
+   `gcp` and the platform family, retrieval goes to `enterprise-knowledge-base` at `retrieval_url`, and an unconfigured
    remote REFUSES at the adapter rather than defaulting to localhost. Whichever you use, the
    model only ever drafts from passages retrieval already returned, so the quality of the corpus
    IS the quality of the suggestions.
-6. **The guardrail gateway.** `guardrail_url` points at Hrz1. Screening is not optional here:
+6. **The guardrail gateway.** `guardrail_url` points at `agent-guardrail-gateway`. Screening is not optional here:
    `domain/guardrails.py` screens every turn after redaction and before retrieval or generation,
    and an unreachable gateway becomes `ScreenOutcome.UNAVAILABLE`, which fails closed per mode.
    Decide, per mode, what an unavailable screen should cost you, and set it deliberately.
@@ -143,7 +143,7 @@ too. The script deliberately does NOT touch the human decisions below.
    synthetic data. **Do not run against real contacts without your own legal, privacy, conduct
    and model-risk sign-off.**
 8. **Two eval golden sets, not one.** `eval/datasets/` carries an agent-assist set and a
-   self-service set, scored by separate rubrics against separate Hrz4 bundles. Rebuild both for
+   self-service set, scored by separate rubrics against separate `model-quality-gate` bundles. Rebuild both for
    your packs: a fork inherits a green gate that measures the WRONG policy until you do. Note
    that `containment` has a deliberately modest threshold, because a self-service assistant that
    contains too much is a worse outcome than one that hands off; choose your own number with your
@@ -159,23 +159,23 @@ This repo is one system in a catalog of composable GRC systems. Several concerns
 owned by sibling services; integrate rather than rebuild them. See
 [`faq/features-faq.md`](faq/features-faq.md) for the full boundary map.
 
-- **Hrz1** agent guardrail gateway: bound through `ports/guardrail.py` and screening every turn.
-  This is one of the few catalog repos where Hrz1 is a live dependency rather than an open
+- `agent-guardrail-gateway` agent guardrail gateway: bound through `ports/guardrail.py` and screening every turn.
+  This is one of the few catalog repos where `agent-guardrail-gateway` is a live dependency rather than an open
   binding, because untrusted customer text reaches a model here.
-- **Hrz2** enterprise knowledge base: bound through `ports/retrieval.py`. Passages come from a
+- `enterprise-knowledge-base`: bound through `ports/retrieval.py`. Passages come from a
   governed corpus; this repo does not build a second one.
-- **Hrz7** human-review console: every consequential result is routed there in the same call that
+- `human-review-console`: every consequential result is routed there in the same call that
   produced it, over the shared `review-kit` (rule R8). You wire your endpoint; you do not
   re-implement the console.
-- **Hrz4** AI-quality and model-risk gate: owns promotion, per mode, through the two bundles.
+- `model-quality-gate`: owns promotion, per mode, through the two bundles.
   `eval/run_eval.py --mode gate` is the client half and refuses to run off the managed profile.
-- **Hrz5** observability and immutable WORM audit: trace spans and audit events go there.
-- **Hrz3** agent registry: this agent publishes its A2A card at
+- `agent-observability` and immutable WORM audit: trace spans and audit events go there.
+- `agent-registry`: this agent publishes its A2A card at
   `/.well-known/agent-card.json` for discovery.
 - **E3** conversation QA scorecard (`conversation-qa-scorecard`): the post-contact review half
   of the same market obligations. It reads THIS repo's `kind: disclosure` pack and grades against
   it, so a wording is authored once. Do not build a QA scorer here.
-- **Mkt6** consent and marketing screening: not applicable. This service answers a contact the
+- `marketing-compliance-gate` consent and marketing screening: not applicable. This service answers a contact the
   customer initiated and produces no marketing output.
 
 ## 6. Adoption checklist
@@ -189,10 +189,10 @@ owned by sibling services; integrate rather than rebuild them. See
       `onprem` identity adapter.
 - [ ] Authored your own policy packs, with conduct signing off every disclosure, every allowlisted
       intent and every maker-checker action.
-- [ ] Pointed retrieval at your governed corpus or at Hrz2, and reviewed the corpus itself.
-- [ ] Pointed `guardrail_url` at Hrz1 and decided what an unavailable screen costs, per mode.
+- [ ] Pointed retrieval at your governed corpus or at `enterprise-knowledge-base`, and reviewed the corpus itself.
+- [ ] Pointed `guardrail_url` at `agent-guardrail-gateway` and decided what an unavailable screen costs, per mode.
 - [ ] Replaced every synthetic pack, passage, stream and fixture.
 - [ ] Rebuilt BOTH eval golden sets and chose your own `containment` threshold.
 - [ ] Reviewed the deploy posture (Dockerfile, Terraform, bind address) before exposing anything.
-- [ ] Wired your Hrz7 endpoint and decided which sibling services you integrate vs stub.
+- [ ] Wired your `human-review-console` endpoint and decided which sibling services you integrate vs stub.
 - [ ] Recorded your baseline upstream tag so you can take future fixes.

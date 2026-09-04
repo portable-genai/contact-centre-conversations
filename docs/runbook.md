@@ -42,7 +42,7 @@ Order of operations that is not obvious:
    gap to work around.
 5. **The two modes are released one at a time, and each one on its own evidence.**
    `enable_agent_assist` and `enable_self_service` are both born off, and each requires its own
-   Hrz4 promotion bundle before a served deployment will plan. They are written onto the
+   `model-quality-gate` promotion bundle before a served deployment will plan. They are written onto the
    service as `on` or `off` either way, because an emptied flag refuses to boot rather than
    inheriting the unset default. With both off the platform deploys and every mode route
    answers 503, which is the right first apply.
@@ -194,7 +194,7 @@ loopback bound off a derived `bind_profile`, because those two fail closed in op
 see `config.ProfileChoice`.
 
 ## Human review routing (rule R8)
-Set `HUMAN_REVIEW_URL` to the Hrz7 console (HTTPS is required off loopback) and provide
+Set `HUMAN_REVIEW_URL` to the `human-review-console` (HTTPS is required off loopback) and provide
 `HUMAN_REVIEW_S2S_TOKEN`; `HUMAN_REVIEW_S2S_SIGNING_KEY` optionally signs the propagated actor. These are the
 OUTBOUND credentials and are deliberately distinct from this service's own inbound
 `CONTACT_S2S_TOKEN`. With the URL unset, the managed router REFUSES rather
@@ -203,7 +203,7 @@ auto-execution. Under the local profile the escalation goes to the review-kit ou
 inspectable and flushes to the console when one becomes reachable.
 
 ## Outbound credentials for the sibling services (rules R1 and R3)
-The Hrz1 guardrail screen, the Hrz2 governed index and the MCP action catalog are reached over
+The `agent-guardrail-gateway` screen, the `enterprise-knowledge-base` governed index and the MCP action catalog are reached over
 one shared S2S transport (`adapters/gcp/_s2s.py`) and share ONE credential pair:
 `S2S_TOKEN` is the bearer, `S2S_SIGNING_KEY` optionally signs the propagated actor.
 Both are OUTBOUND, like the `HUMAN_REVIEW_S2S_*` pair above and unlike this service's own inbound
@@ -276,7 +276,7 @@ Operating rules:
 ## Agent surface
 The A2A discovery card is served at `/.well-known/agent-card.json` and is built from the same
 tool table the runtime binds, so it cannot advertise a skill the service does not implement.
-Register it with the Hrz3 registry (rule R4). The tools themselves need no agent runtime to run;
+Register it with the `agent-registry` (rule R4). The tools themselves need no agent runtime to run;
 only `build_function_tools()` imports one.
 
 ## Voice gateway (telephony)
@@ -332,8 +332,8 @@ through `alert_notification_channels`; the serving edge refuses to plan without 
 alert nobody receives is not an alert.
 
 There is deliberately no guardrail-block alert here, and not because this service has no
-guardrail: every inbound turn is screened through the Hrz1 gateway. The block is decided and
+guardrail: every inbound turn is screened through the `agent-guardrail-gateway`. The block is decided and
 recorded THERE, and the `AuditEvent` this service writes carries no field naming it, so a filter
 here would have to pattern-match the prose summary and would break on a wording change. Alert on
-blocks in Hrz1, where the field exists, and add a metric here in the same commit that puts the
+blocks in `agent-guardrail-gateway`, where the field exists, and add a metric here in the same commit that puts the
 screen outcome on the audit record.

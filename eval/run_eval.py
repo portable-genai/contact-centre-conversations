@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Evaluation gate for Contact Centre AI (E1): TWO rubric sets, reported SEPARATELY.
 
-E1's two modes are two Hrz4 gated releases with different risk postures, so they cannot share a
-score. Each has its own golden set, its own metrics and its own report, and each Hrz4 promotion
-gate consumes only its own. A single blended number would let a strong agent-assist result carry
-a weak customer-facing one over the line, which is the exact thing gating the modes apart exists
-to prevent.
+E1's two modes are two model-quality-gate gated releases with different risk postures, so they
+cannot share a score. Each has its own golden set, its own metrics and its own report, and each
+model-quality-gate promotion gate consumes only its own. A single blended number would let a strong
+agent-assist result carry a weak customer-facing one over the line, which is the exact thing gating
+the modes apart exists to prevent.
 
 * **agent-assist**: next-step accuracy, reminder timeliness, citation accuracy, groundedness.
 * **self-service**: gate precision (must be 1.0), handoff safety, maker-checker safety,
@@ -18,10 +18,10 @@ with itself would be a tautology with a threshold, and
 
 Two named layers via ``--mode``:
 
-* **smoke** (default) : the offline pre-merge check CI runs on every change, over the real
-  services with SDK-free local adapters.
-* **gate** : the promotion verdict from the shared Hrz4 authority (requires the ``gcp``
-  profile), per rubric, via ``agent_eval_kit.PromotionGateClient``.
+* **smoke** (default) : the offline pre-merge check CI runs on every change, over the real services
+  with SDK-free local adapters. * **gate** : the promotion verdict from the shared
+  model-quality-gate authority (requires the ``gcp`` profile), per rubric, via
+  ``agent_eval_kit.PromotionGateClient``.
 
 Exit is ``0`` iff EVERY selected rubric passes (and, in gate mode, the authority agrees).
 """
@@ -128,7 +128,7 @@ def load_thresholds_from_rubrics(root: Path = _RUBRICS) -> dict[str, dict[str, f
 #: trusted. The reasoning for every bar lives beside it in ``eval/rubrics/``.
 THRESHOLDS: dict[str, dict[str, float]] = load_thresholds_from_rubrics()
 
-#: The registered Hrz4 metric bundle PER MODE. Two bundles, because two promotions.
+#: The registered model-quality-gate metric bundle PER MODE. Two bundles, because two promotions.
 BUNDLES: dict[str, str] = {
     AGENT_ASSIST: "contact-centre-conversations-agent-assist",
     SELF_SERVICE: "contact-centre-conversations-self-service",
@@ -864,7 +864,7 @@ SMOKE: dict[str, Callable[[Path], EvalReport]] = {
 
 
 # --------------------------------------------------------------------------------------- #
-# The Hrz4 promotion gate, per rubric
+# The model-quality-gate promotion gate, per rubric
 # --------------------------------------------------------------------------------------- #
 def run_gate(rubric: str, dataset: Path) -> tuple[EvalReport, bool]:
     settings = Settings.load()
@@ -879,7 +879,7 @@ def run_gate(rubric: str, dataset: Path) -> tuple[EvalReport, bool]:
 
 
 def _quality_url() -> str:
-    """The Hrz4 quality service, read in three states like everything else.
+    """The model-quality-gate quality service, read in three states like everything else.
 
     An unset variable takes the documented default; a variable an operator EMPTIED names nothing
     and refuses, rather than inheriting that default and silently asking localhost for a
@@ -889,7 +889,9 @@ def _quality_url() -> str:
 
     setting = read_env_setting("CONTACT_QUALITY_URL")
     if setting.is_configured_empty:
-        raise SystemExit("CONTACT_QUALITY_URL is set but empty; unset it or name the Hrz4 service")
+        raise SystemExit(
+            "CONTACT_QUALITY_URL is set but empty; unset it or name the model-quality-gate service"
+        )
     return setting.value if setting.has_value else "http://localhost:8084"
 
 
@@ -990,7 +992,8 @@ def build_parser() -> argparse.ArgumentParser:
         default="smoke",
         help=(
             "smoke (default): the offline pre-merge check. "
-            "gate: the Hrz4 promotion verdict for the selected rubric (requires the gcp profile)."
+            "gate: the model-quality-gate promotion verdict for the selected rubric (requires the "
+            "gcp profile)."
         ),
     )
     return parser
@@ -1042,7 +1045,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: dataset not found: {dataset}", flush=True)
             return 2
         print("")
-        print(f"=== rubric: {rubric}  (Hrz4 bundle {BUNDLES[rubric]}) ===")
+        print(f"=== rubric: {rubric}  (model-quality-gate bundle {BUNDLES[rubric]}) ===")
         if args.mode == "gate":
             report, passed = run_gate(rubric, dataset)
             print_report(report, f"{rubric} promotion gate")

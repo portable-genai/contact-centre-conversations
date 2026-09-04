@@ -1,4 +1,4 @@
-"""Rule R8: an escalated result is ROUTED to Hrz7, not left in a per-repo boolean.
+"""Rule R8: an escalated result is ROUTED to human-review-console, not left in a per-repo boolean.
 
 This is the standing gate for the failure the rule exists to prevent. A repo can set
 ``requires_human_review = True``, pass every other test, and still auto-execute in practice
@@ -66,7 +66,7 @@ def test_the_review_is_tagged_with_the_mode_that_produced_it() -> None:
 
 
 def test_the_payload_is_redacted_before_it_leaves_the_process() -> None:
-    """Hrz7 is a shared sink; a raw identifier must never reach the wire."""
+    """human-review-console is a shared sink; a raw identifier must never reach the wire."""
     from contact_centre_conversations.adapters._review_payload import result_to_review
 
     review = result_to_review(CANONICAL_RESULT, maker=_MAKER, tenant=sample_cases.TENANT)

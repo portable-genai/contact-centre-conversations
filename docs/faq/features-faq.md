@@ -15,7 +15,7 @@ integrates" map.
 They are separate because their risk postures are not comparable. One is internal
 decision-support with a trained human between the model and the customer; the other reaches a
 member of the public directly. So they are enabled independently, promoted independently through
-their own Hrz4 bundle, and evaluated by their own rubric set. **Both default off**, and with both
+their own `model-quality-gate` bundle, and evaluated by their own rubric set. **Both default off**, and with both
 off every mode route refuses.
 
 ## What is deterministic and what is not?
@@ -57,7 +57,7 @@ Configure the degradation you actually want before you go live.
 ## Can the assistant do something to an account?
 
 Only what your action catalog lists, and anything consequential is HELD and ROUTED rather than
-executed: it sets `requires_human_review` and is submitted to the Hrz7 console in the same call
+executed: it sets `requires_human_review` and is submitted to the `human-review-console` in the same call
 that produced it (rule R8). `tests/unit/test_maker_checker.py` and
 `tests/unit/test_review_routing.py` are the standing gates.
 
@@ -71,14 +71,14 @@ what persists.
 
 | Concern | Owner | How it appears here |
 |---|---|---|
-| Prompt-injection and abuse screening | **Hrz1** guardrail gateway | `ports/guardrail.py`, a live dependency screening every turn. One of the few catalog repos where Hrz1 is bound rather than owed |
-| Governed retrieval | **Hrz2** knowledge base | `ports/retrieval.py` at `retrieval_url`. The corpus is Hrz2's asset, not this repo's |
-| Human review and maker-checker | **Hrz7** review console | `ports/review_router.py`, bound in all three families over the shared `review-kit`. Rule R8 |
-| Model and agent promotion | **Hrz4** AI-quality gate | two bundles, one per mode. `eval/run_eval.py --mode gate` is the client half and refuses off the managed profile |
-| Tracing and immutable WORM audit | **Hrz5** observability | `ports/observability.py`; the local audit half is tamper-evident today, the shared sink is an open binding |
-| Agent discovery and entitlements | **Hrz3** agent registry | the A2A card at `/.well-known/agent-card.json`, built from the same tool table the runtime binds |
+| Prompt-injection and abuse screening | `agent-guardrail-gateway` | `ports/guardrail.py`, a live dependency screening every turn. One of the few catalog repos where `agent-guardrail-gateway` is bound rather than owed |
+| Governed retrieval | `enterprise-knowledge-base` knowledge base | `ports/retrieval.py` at `retrieval_url`. The corpus is `enterprise-knowledge-base`'s asset, not this repo's |
+| Human review and maker-checker | `human-review-console` | `ports/review_router.py`, bound in all three families over the shared `review-kit`. Rule R8 |
+| Model and agent promotion | `model-quality-gate` | two bundles, one per mode. `eval/run_eval.py --mode gate` is the client half and refuses off the managed profile |
+| Tracing and immutable WORM audit | `agent-observability` | `ports/observability.py`; the local audit half is tamper-evident today, the shared sink is an open binding |
+| Agent discovery and entitlements | `agent-registry` | the A2A card at `/.well-known/agent-card.json`, built from the same tool table the runtime binds |
 | Post-contact QA and compliance scoring | **E3** conversation QA scorecard | it reads THIS repo's `kind: disclosure` pack and grades finished contacts against it. Do not build a QA scorer here |
-| Consent and marketing screening | **Mkt6** | not applicable. This service answers a contact the customer initiated and produces no marketing output |
+| Consent and marketing screening | `marketing-compliance-gate` | not applicable. This service answers a contact the customer initiated and produces no marketing output |
 
 ## Why does E3 read our disclosure pack?
 

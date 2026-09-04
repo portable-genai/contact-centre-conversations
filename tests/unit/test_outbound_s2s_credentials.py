@@ -1,11 +1,12 @@
 """The outbound S2S pair resolves THREE states, and refuses two of them before the call leaves.
 
-`adapters/gcp/_s2s.py` carries the credentials the Hrz1 guardrail screen (rule R1), the Hrz2
-governed index (rule R3) and the MCP action catalog present to their siblings. Both were read by
-`hex_service_kit.s2s.client_headers`, which stripped a value before it tested it, so UNSET and
-SET-AND-EMPTY were ONE state: an operator who deliberately emptied `S2S_TOKEN` got exactly
-what an operator who never set it got, which is a call leaving with no `Authorization` header on
-it at all. Nothing in this process refused, and the symptom was a 401 at the far end.
+`adapters/gcp/_s2s.py` carries the credentials the agent-guardrail-gateway screen (rule R1), the
+enterprise-knowledge-base governed index (rule R3) and the MCP action catalog present to their
+siblings. Both were read by `hex_service_kit.s2s.client_headers`, which stripped a value before it
+tested it, so UNSET and SET-AND-EMPTY were ONE state: an operator who deliberately emptied
+`S2S_TOKEN` got exactly what an operator who never set it got, which is a call leaving with no
+`Authorization` header on it at all. Nothing in this process refused, and the symptom was a 401 at
+the far end.
 
 The three states are held apart, and the table is unchanged by where the rule now lives:
 

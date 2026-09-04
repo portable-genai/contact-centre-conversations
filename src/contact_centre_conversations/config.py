@@ -599,7 +599,7 @@ class Settings:
     #: that verifies perfectly. Empty means no anchor, which is right for the ephemeral
     #: ``:memory:`` store and wrong for anything durable.
     audit_anchor_path: str = ""
-    #: Base URL of the Hrz7 Human-Review console the R8 producer path submits to.
+    #: Base URL of the human-review-console Human-Review console the R8 producer path submits to.
     review_url: str = ""
     #: The audience the managed IAP identity adapter verifies the signed assertion AGAINST: the
     #: IAP-protected resource, ``/projects/<NUM>/global/backendServices/<ID>`` behind an HTTPS
@@ -623,9 +623,11 @@ class Settings:
     streams_path: str = ""
     #: The directory of reviewed policy packs. Loaded and VALIDATED at boot by ``load``.
     packs_path: str = ""
-    #: Base URL of the Hrz2 governed knowledge base (the platform-remote retrieval adapter).
+    #: Base URL of the enterprise-knowledge-base governed knowledge base (the platform-remote
+    #: retrieval adapter).
     retrieval_url: str = ""
-    #: Base URL of the Hrz1 Agent Guardrail Gateway (the platform-remote screening adapter).
+    #: Base URL of the agent-guardrail-gateway Agent Guardrail Gateway (the platform-remote
+    #: screening adapter).
     guardrail_url: str = ""
     #: Base URL of the client's MCP / A2A action service.
     tool_catalog_url: str = ""

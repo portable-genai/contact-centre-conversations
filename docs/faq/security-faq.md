@@ -39,7 +39,7 @@ because a guard the profile has switched off is no guard.
 
 The order is fixed and one object owns it: redact, then screen, then retrieve, then generate.
 `domain/guardrails.py` masks every inbound turn with the `pii-kit` jurisdiction rows and then
-screens it through `ports/guardrail.py`, a thin S2S client to the Hrz1 gateway. Only a CLEAN
+screens it through `ports/guardrail.py`, a thin S2S client to the `agent-guardrail-gateway`. Only a CLEAN
 screen may reach retrieval or generation.
 
 The important property is what happens when screening is impossible. An adapter that cannot
@@ -66,7 +66,7 @@ a model's context and an API response does not. See [`../model-card.md`](../mode
 
 No. Both mode flags default off and `domain/modes.py` resolves each in three states: unset is
 off, deliberately EMPTIED refuses to boot rather than inheriting that default, and an
-unrecognised or mis-capitalised value refuses too. A mode enabled with no Hrz4 promotion bundle
+unrecognised or mis-capitalised value refuses too. A mode enabled with no `model-quality-gate` promotion bundle
 refuses to boot under any profile except a deliberate offline `local`.
 `tests/unit/test_mode_gating.py` is the gate. With both modes off, every mode route refuses.
 
@@ -74,7 +74,7 @@ refuses to boot under any profile except a deliberate offline `local`.
 
 Only what the action catalog allows, and never without the deterministic gate.
 `domain/policy_gate.py` produces the verdict, `domain/action_engine.py` decides the action, and
-anything consequential sets `requires_human_review` and is ROUTED to the Hrz7 console in the same
+anything consequential sets `requires_human_review` and is ROUTED to the `human-review-console` in the same
 call that produced it (`tests/unit/test_maker_checker.py`,
 `tests/unit/test_review_routing.py`). The self-service intent list is an ALLOWLIST: an intent
 nobody configured is refused rather than attempted, and a missing packs directory yields the
@@ -121,11 +121,11 @@ refuse a wildcard, and an unset tenant allowlist denies.
 
 ## What is explicitly NOT in scope here?
 
-- **The screening engine itself.** Hrz1 owns detection. This repo owns the ORDER, the fail-closed
+- **The screening engine itself.** `agent-guardrail-gateway` owns detection. This repo owns the ORDER, the fail-closed
   conversion and the per-mode degradation.
-- **The knowledge corpus.** Hrz2 owns governed retrieval. The quality of the corpus is the
+- **The knowledge corpus.** `enterprise-knowledge-base` owns governed retrieval. The quality of the corpus is the
   quality of the suggestions, and it is not this repo's asset.
-- **The review console.** Escalations are routed to Hrz7; the console is that system.
-- **Trace collection.** Spans go to Hrz5; `COMPLIANCE.md` R2 records that binding as open.
+- **The review console.** Escalations are routed to `human-review-console`; the console is that system.
+- **Trace collection.** Spans go to `agent-observability`; `COMPLIANCE.md` R2 records that binding as open.
 - **Network perimeter.** `infra/terraform/vpc_sc.tf` stands up a dry-run-first perimeter, but
   private endpoints and a distinct agent identity are recorded as open in `COMPLIANCE.md` P-09.

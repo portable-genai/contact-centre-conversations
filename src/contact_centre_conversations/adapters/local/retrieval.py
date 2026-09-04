@@ -5,8 +5,8 @@ by normalised term overlap, using the same locale-aware normalisation the phrase
 that a Japanese query is folded the way a Japanese lexicon is. Deterministic: same query, same
 corpus, same order, every run, which is what makes a citation-accuracy metric replayable.
 
-It is a stand-in for Hrz2, not a search product, and it is deliberately honest about the two
-ways it can fail:
+It is a stand-in for enterprise-knowledge-base, not a search product, and it is deliberately honest
+about the two ways it can fail:
 
 * a corpus file that was NAMED and does not exist raises, rather than answering from nothing;
 * an EMPTY corpus raises, rather than returning ``[]``. Empty retrieval means "say nothing" in
@@ -46,7 +46,8 @@ class LocalFixtureRetrievalAdapter:
         if self._path is None:
             raise RuntimeError(
                 "no knowledge-base corpus is configured (kb_path is empty), so this deployment "
-                "can ground nothing. Point kb_path at a passage file or bind a real Hrz2 adapter."
+                "can ground nothing. Point kb_path at a passage file or bind a real "
+                "enterprise-knowledge-base adapter."
             )
         if not self._path.exists():
             raise RuntimeError(f"knowledge-base corpus {self._path} does not exist")

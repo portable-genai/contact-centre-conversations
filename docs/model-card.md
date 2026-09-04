@@ -7,7 +7,7 @@ model is a bounded, replaceable component that drafts prose from passages somebo
 This repo serves TWO separately gated modes with different risk postures, and the model boundary
 is the same in both. What differs is who reads the output: agent-assist whispers to a trained
 human who decides, self-service reaches a member of the public directly. Both default off, both
-promote independently through their own Hrz4 bundle, and both are covered below.
+promote independently through their own `model-quality-gate` bundle, and both are covered below.
 
 ## What the model does, and does not do
 
@@ -32,7 +32,7 @@ port is a wider blast radius.
 - **The order is fixed: redact, then screen, then retrieve, then generate.**
   `domain/guardrails.py` owns that ordering. Every inbound turn is masked with the `pii-kit`
   jurisdiction rows, then screened for prompt injection and abuse through `ports/guardrail.py`
-  (the Hrz1 gateway), and only then may retrieval or generation happen.
+  (the `agent-guardrail-gateway`), and only then may retrieval or generation happen.
 - **Unavailable is a verdict, not an exception a caller may ignore.** An adapter that cannot
   reach the guardrail gateway RAISES, and `TurnGuard` converts the raise into
   `ScreenOutcome.UNAVAILABLE`, which fails closed per mode via `degradation_for`. The one thing
@@ -45,7 +45,7 @@ port is a wider blast radius.
   is over `MAX_SUGGESTION_CHARS`, cites a passage that was not retrieved, or contains a number
   the passages did not supply.
 - **Nothing auto-executes.** A consequential result sets `requires_human_review` and is routed to
-  the Hrz7 console in the same call that produced it (rule R8), on the API, the CLI and the agent
+  the `human-review-console` in the same call that produced it (rule R8), on the API, the CLI and the agent
   surface alike. `tests/unit/test_maker_checker.py` and `tests/unit/test_review_routing.py` are
   the gates.
 - **A mode that is not enabled has no model path at all.** `domain/modes.py` resolves each flag
@@ -58,7 +58,7 @@ port is a wider blast radius.
 | Profile | Generation | Guardrail | Speech | Behaviour |
 |---|---|---|---|---|
 | `local` | `adapters/local/generation.py` | `adapters/local/guardrail.py` | `adapters/local/speech.py` | No model. The drafter composes a reply from the retrieved passages themselves, the leading sentence of the highest-scoring passage behind a fixed acknowledgement: less capable than a model and exactly as grounded, which is the property the offline gate has to be able to assert. The same turn and corpus produce the same draft, so the citation and groundedness metrics measure the validator rather than the weather. SDK-free. |
-| `gcp` | `adapters/gcp/generation.py` | `adapters/gcp/guardrail.py` | `adapters/gcp/speech.py` | Gemini, named by `CONTACT_MODEL` (`model` in `config/settings.yaml`), constrained to a response schema, with a lazy SDK import. The guardrail adapter is a thin S2S client to the Hrz1 gateway at `guardrail_url`; unconfigured means it REFUSES rather than defaulting to localhost. Streaming speech-to-text, Chirp synthesis and diarization are pinned to `settings.region`, because a recogniser in another jurisdiction is a residency breach no downstream masking undoes. |
+| `gcp` | `adapters/gcp/generation.py` | `adapters/gcp/guardrail.py` | `adapters/gcp/speech.py` | Gemini, named by `CONTACT_MODEL` (`model` in `config/settings.yaml`), constrained to a response schema, with a lazy SDK import. The guardrail adapter is a thin S2S client to the `agent-guardrail-gateway` at `guardrail_url`; unconfigured means it REFUSES rather than defaulting to localhost. Streaming speech-to-text, Chirp synthesis and diarization are pinned to `settings.region`, because a recogniser in another jurisdiction is a residency breach no downstream masking undoes. |
 | `onprem` | `adapters/onprem/generation.py` | `adapters/onprem/guardrail.py` | `adapters/onprem/speech.py` | Fail-fast placeholders. The client wires its own model gateway, screening service and speech stack. A refusal on generation costs a suggestion; a refusal on screening fails the turn closed, which is the correct direction. |
 
 ## Evaluation as it stands
@@ -121,7 +121,7 @@ locale and per channel needs audio corpora and is a named follow-up, not an omis
   rate limit. A kill switch is cheap here and should be explicit: turning a mode off already
   removes its model path entirely, so document that as the switch and test it.
 - **Evaluation of the live model.** The offline rubrics score the deterministic drafter and the
-  validator, not live Gemini output. Add a managed-profile run through the Hrz4 gate, per mode,
+  validator, not live Gemini output. Add a managed-profile run through the `model-quality-gate`, per mode,
   that scores real drafts for groundedness and citation accuracy against the same golden sets.
 - **Self-service output review before public exposure.** The gate verdict is deterministic, but
   the words a customer reads are drafted. Before enabling `self-service` for a real public,

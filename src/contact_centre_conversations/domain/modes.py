@@ -8,9 +8,10 @@ different risk postures:
 * **self-service** is customer-facing. Nobody stands between the engine and the customer, so
   the same defect reaches a member of the public directly.
 
-They therefore promote separately: each is its own Hrz4 gated release with its own rubric set
-and its own promotion evidence, which is the entire reason the catalog row separates them. A
-single "the service is live" switch would let the safer mode's evidence promote the riskier one.
+They therefore promote separately: each is its own model-quality-gate gated release with its own
+rubric set and its own promotion evidence, which is the entire reason the catalog row separates
+them. A single "the service is live" switch would let the safer mode's evidence promote the riskier
+one.
 
 **Both flags default OFF and resolve in three states**, like every other setting in this repo
 (see ``config.py``). The settings file writes the UNSET default explicitly, so:
@@ -73,7 +74,8 @@ class ModeGate:
 
     mode: ContactMode
     enabled: bool = False
-    #: The Hrz4 metric bundle whose promotion verdict authorises THIS mode. Empty means none.
+    #: The model-quality-gate metric bundle whose promotion verdict authorises THIS mode. Empty
+    #: means none.
     promotion_bundle: str = ""
 
     def require(self) -> None:
@@ -81,7 +83,8 @@ class ModeGate:
         if not self.enabled:
             raise ModeDisabledError(
                 f"mode {self.mode.value!r} is not enabled in this deployment: set it on in the "
-                "modes block of config/settings.yaml, with its own Hrz4 promotion bundle"
+                "modes block of config/settings.yaml, with its own model-quality-gate promotion "
+                "bundle"
             )
 
 
@@ -210,7 +213,8 @@ class ModeGates:
         if enabled and not bundle and profile != _EVIDENCE_EXEMPT_PROFILE:
             raise ModeConfigurationError(
                 f"mode {mode.value!r} is enabled under the {profile!r} profile with no "
-                "promotion_bundle: each mode promotes on ITS OWN Hrz4 evidence, so name the "
+                "promotion_bundle: each mode promotes on ITS OWN model-quality-gate evidence, so "
+                "name the "
                 "bundle whose rubric set authorised this mode"
             )
         return ModeGate(mode=mode, enabled=enabled, promotion_bundle=bundle)

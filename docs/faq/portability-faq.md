@@ -22,7 +22,7 @@ One environment variable, `CONTACT_PROFILE`, selects the family.
 | Profile | What it is | Cloud SDK |
 |---|---|---|
 | `local` | The SDK-free offline stack: a fixture knowledge corpus, scripted contact streams, seeded dev personas, a hash-chained SQLite WORM audit log, and a deterministic drafter that composes from the retrieved passages. This is what the gate, the demo and CI run. | none |
-| `gcp` | Managed: Gemini generation, the Hrz1 guardrail gateway, Hrz2 retrieval, streaming Speech-to-Text, Chirp synthesis, diarization, Firestore, Cloud Logging WORM, IAP identity. Every SDK import is LAZY, inside the method. | lazy |
+| `gcp` | Managed: Gemini generation, the `agent-guardrail-gateway`, `enterprise-knowledge-base` retrieval, streaming Speech-to-Text, Chirp synthesis, diarization, Firestore, Cloud Logging WORM, IAP identity. Every SDK import is LAZY, inside the method. | lazy |
 | `onprem` | Fail-fast placeholders that RAISE. The client wires its own model gateway, screening service, knowledge base and speech stack. | none |
 
 `onprem` raising rather than silently succeeding is the point. A placeholder that returned a
@@ -91,7 +91,6 @@ Four pinned commons packages: `hex-service-kit`, `agent-eval-kit`, `pii-kit` and
 `review-kit`. They are ordinary Python packages pinned to commit shas, they contain no cloud
 SDK, and a fork can vendor any of them.
 
-The deeper couplings are architectural rather than technical, and they are deliberate: the Hrz1
-guardrail gateway (a screening service you must have SOMETHING behind), the Hrz2 knowledge base
-(a governed corpus you must have somewhere), and Hrz7 (a place escalations go). Replacing any of
+The deeper couplings are architectural rather than technical, and they are deliberate: the `agent-guardrail-gateway` (a screening service you must have SOMETHING behind), the `enterprise-knowledge-base` knowledge base
+(a governed corpus you must have somewhere), and `human-review-console` (a place escalations go). Replacing any of
 them is an adapter; removing the concept is a different product.

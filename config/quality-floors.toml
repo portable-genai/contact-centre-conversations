@@ -1,4 +1,4 @@
-# Narrative quality floors, per Hrz4 promotion bundle. Owner: model risk.
+# Narrative quality floors, per model-quality-gate promotion bundle. Owner: model risk.
 #
 # These are the ONLY numbers in this service that say how good a generated reply has to be, as
 # opposed to whether it was allowed, grounded, cited or safe. Everything else the eval measures
@@ -17,7 +17,7 @@
 # employee reads the agent-assist panel and can discard a weak suggestion before anybody hears
 # it. Nobody stands between the self-service reply and a member of the public.
 schema = "quality-floors/v1"
-owner = "model risk (Hrz4 promotion authority)"
+owner = "model risk (model-quality-gate promotion authority)"
 
 [verticals.contact-centre-conversations-agent-assist]
 floor = 0.72

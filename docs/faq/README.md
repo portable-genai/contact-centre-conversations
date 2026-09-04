@@ -18,9 +18,9 @@ modes with different risk postures. `agent-assist` whispers to a trained human w
 between them, these pages say so rather than averaging them.
 
 These pages deliberately do NOT re-document capabilities owned by sibling systems in the catalog.
-Where a concern belongs to another system (the guardrail gateway Hrz1, the knowledge base Hrz2,
-the agent registry Hrz3, the AI-quality gate Hrz4, the observability and WORM audit sink Hrz5,
-the human-review console Hrz7, the post-contact QA scorecard E3), the FAQ points at it and
+Where a concern belongs to another system (the guardrail gateway `agent-guardrail-gateway`, the knowledge base `enterprise-knowledge-base`,
+the agent registry `agent-registry`, the AI-quality gate `model-quality-gate`, the observability and WORM audit sink `agent-observability`,
+the human-review console `human-review-console`, the post-contact QA scorecard E3), the FAQ points at it and
 explains the boundary rather than duplicating it. See [features-faq.md](features-faq.md) for the
 full map.
 

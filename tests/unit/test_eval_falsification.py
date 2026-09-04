@@ -323,7 +323,9 @@ def test_handoff_safety_goes_red_when_the_expected_triggers_are_wrong(tmp_path: 
 # The two rubrics stay separate
 # --------------------------------------------------------------------------------------- #
 def test_the_two_rubrics_report_separately_and_share_no_metric_name() -> None:
-    """Each Hrz4 promotion gate consumes only its own, so a shared name would blur them."""
+    """Each model-quality-gate promotion gate consumes only its own, so a shared name would blur
+    them.
+    """
     aa = {result.metric for result in run_eval.run_agent_assist(run_eval.DATASETS[_AA]).results}
     ss = {result.metric for result in run_eval.run_self_service(run_eval.DATASETS[_SS]).results}
     assert aa and ss

@@ -306,16 +306,20 @@ class DisclosureReport:
 
     @property
     def requires_human_review(self) -> bool:
-        """A window that closed unsatisfied is consequential: it routes to Hrz7 under R8."""
+        """A window that closed unsatisfied is consequential: it routes to human-review-console
+        under R8.
+        """
         return bool(self.missed)
 
 
 # --------------------------------------------------------------------------------------- #
-# Retrieval and grounded suggestion (the Hrz2 governed-RAG shape)
+# Retrieval and grounded suggestion (the enterprise-knowledge-base governed-RAG shape)
 # --------------------------------------------------------------------------------------- #
 @dataclass(frozen=True, slots=True)
 class RetrievalQuery:
-    """Query in. The shape is Hrz2's governed-RAG port shape, kept identical on purpose."""
+    """Query in. The shape is enterprise-knowledge-base's governed-RAG port shape, kept identical on
+    purpose.
+    """
 
     text: str
     top_k: int = 5

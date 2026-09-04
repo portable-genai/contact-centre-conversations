@@ -394,7 +394,6 @@ class DemoRun:
             title="Deployment",
             rows=(
                 Row("Service", SERVICE_NAME),
-                Row("Catalog id", CATALOG_ID),
                 Row("Profile", self.settings.profile, "ok"),
                 Row("Profiles bound for every port", ", ".join(profiles)),
                 Row("Residency region", self.settings.region),
@@ -436,7 +435,8 @@ class DemoRun:
             ),
             note=(
                 "Both default OFF and resolve in three states: unset is off, an EMPTIED flag "
-                "refuses to boot, an unknown value refuses to boot. Each mode names the Hrz4 "
+                "refuses to boot, an unknown value refuses to boot. Each mode names the "
+                "model-quality-gate "
                 "bundle whose evidence authorised it, and one mode's evidence never promotes "
                 "the other."
             ),
@@ -494,7 +494,8 @@ class DemoRun:
                 ),
                 note=(
                     "A missed disclosure window is a regulatory event, not a UI state. It sets "
-                    "requires_human_review and routes to Hrz7 under rule R8 in the same call."
+                    "requires_human_review and routes to human-review-console under rule R8 in the "
+                    "same call."
                 ),
                 tone="ok" if result.review_ref else "bad",
             )
@@ -709,7 +710,8 @@ class DemoRun:
             )
             or (Row("modes", "NONE", "bad"),),
             note=(
-                "Each mode is its own Hrz4 gated release, so a record whose mode is unknown "
+                "Each mode is its own model-quality-gate gated release, so a record whose mode is "
+                "unknown "
                 "cannot be counted towards either promotion. The tag is a field, not a prefix "
                 "on the action name, so 'every decision this mode made' is a query."
             ),
@@ -945,7 +947,6 @@ class DemoRun:
         current = self.results[-1]
         return {
             "service": SERVICE_NAME,
-            "catalog_id": CATALOG_ID,
             "repository": REPOSITORY,
             "profile": self.settings.profile,
             "region": self.settings.region,
