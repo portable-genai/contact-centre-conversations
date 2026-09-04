@@ -49,7 +49,7 @@ review_url: ${HUMAN_REVIEW_URL:-}
 # resolves to empty and REFUSES TO BOOT rather than inheriting that default, and so does an
 # unrecognised or mis-capitalised value.
 #
-# Each mode is its own Hrz4 gated release with its own rubric set and risk posture (internal
+# Each mode is its own model-quality-gate gated release with its own rubric set and risk posture (internal
 # decision-support vs customer-facing), so each names the promotion bundle whose evidence
 # authorised it. A mode enabled with no bundle refuses to boot under any profile other than a
 # deliberate offline `local`, where there is no customer and nothing to promote to.
@@ -67,7 +67,7 @@ modes:
 packs_path: ${CONTACT_PACKS_PATH:-config/packs}
 
 # The offline knowledge-base corpus and the scripted contact streams. Both are fixtures for the
-# `local` family; the managed family reaches Hrz2 and the real recogniser instead.
+# `local` family; the managed family reaches enterprise-knowledge-base and the real recogniser instead.
 kb_path: ${CONTACT_KB_PATH:-config/kb/passages.jsonl}
 # Which party owns which record, for the ownership check that stops one customer reading
 # another's. A fictional fixture offline; the client's system of record when deployed.
@@ -145,7 +145,7 @@ adapters:
     onprem: contact_centre_conversations.adapters.onprem.review_router:OnPremReviewRouter
 
   # Tracing. Which BACKEND a deployed profile exports to is not a binding: the gcp
-  # adapter reads OTEL_EXPORTER_OTLP_ENDPOINT and sends OTLP to the Hrz5 collector when
+  # adapter reads OTEL_EXPORTER_OTLP_ENDPOINT and sends OTLP to the agent-observability collector when
   # it is set, straight to Cloud Trace when it is not. Tracing is not essential to
   # correctness, so onprem is ABSENT rather than fatal, unlike the other placeholders.
   tracer:
@@ -153,7 +153,7 @@ adapters:
     gcp: contact_centre_conversations.adapters.gcp.tracer:CloudTracerAdapter
     onprem: contact_centre_conversations.adapters.onprem.tracer:OnPremTracerAdapter
 
-  # The promotion authority (Hrz4). The local adapter scores offline but REFUSES to
+  # The promotion authority (model-quality-gate). The local adapter scores offline but REFUSES to
   # promote: a promotion certified by a laptop with no quality service is certified by
   # nothing.
   evaluation:

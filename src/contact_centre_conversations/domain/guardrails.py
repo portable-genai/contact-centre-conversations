@@ -6,7 +6,7 @@ ORDER is the control rather than a convention:
 1. **Redact.** ``pii-kit`` masks personal data while the text is still inside this process. A
    turn that reached a knowledge base or a model unredacted cannot be un-sent, so redaction is
    not a step the pipeline performs on the way out.
-2. **Screen.** The redacted text goes to the Hrz1 guardrail for prompt-injection and abuse
+2. **Screen.** The redacted text goes to the agent-guardrail-gateway for prompt-injection and abuse
    screening. Screening the REDACTED text is deliberate: the screen is an external service, and
    handing it the raw identifiers to look for injections in would leak them to solve a problem
    that has nothing to do with them.

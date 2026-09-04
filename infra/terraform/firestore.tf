@@ -5,7 +5,7 @@
 # (adapters/gcp/contact_store.py) is a Firestore adapter, and it puts the tenant in the
 # DOCUMENT PATH (contact_centre_conversations/<tenant>/contacts/<id>) rather than in a query filter, so a
 # cross-tenant read raises rather than depending on the next method remembering to filter.
-# What is NOT ported is Doc1's browser-flow TTL fields, its alias, outbox, replay and
+# What is NOT ported is cdd-sow-research's browser-flow TTL fields, its alias, outbox, replay and
 # rate-limit collections and their composite index: those belong to its embedded-grant browser
 # flow, which this service does not have.
 #

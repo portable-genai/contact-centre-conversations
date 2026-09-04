@@ -7,8 +7,8 @@
 #   P-03 (residency): enabling these is the prerequisite for the regional, CMEK-protected
 #         resources the sibling files create.
 #
-# Four of this service's managed adapters call no Google API at all: the Hrz1 guardrail screen,
-# the Hrz2 governed-RAG retrieval, the Hrz7 review router and the MCP action catalog are HTTPS
+# Four of this service's managed adapters call no Google API at all: the agent-guardrail-gateway screen,
+# the enterprise-knowledge-base governed-RAG retrieval, the human-review-console review router and the MCP action catalog are HTTPS
 # calls to sibling services carrying an S2S bearer, so they need no API here and no IAM role in
 # iam.tf. They need their URLs, which is why variables.tf refuses a served deployment without
 # them.

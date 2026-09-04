@@ -3,7 +3,7 @@
 # Matches the reference stack, adapted for this repo. Every run below uses `mock_provider`, so the
 # whole file runs with NO credentials, NO project and NO network beyond the provider download:
 #   terraform init -backend=false && terraform test
-# The Doc1 runs that were NOT portable are the Mode 5 signing-key stages and the installation
+# The cdd-sow-research runs that were NOT portable are the Mode 5 signing-key stages and the installation
 # manifest contract; those are its embedded-grant browser flow, which this service does not
 # have, and their module does not exist here.
 #
@@ -252,7 +252,7 @@ run "serving_edge_contract" {
     condition = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "CONTACT_SELF_SERVICE_BUNDLE"]) != one(
       [for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "CONTACT_AGENT_ASSIST_BUNDLE"]
     )
-    error_message = "Each mode must carry its OWN Hrz4 promotion bundle: one shared bundle would let the safer mode's evidence promote the customer-facing one."
+    error_message = "Each mode must carry its OWN model-quality-gate promotion bundle: one shared bundle would let the safer mode's evidence promote the customer-facing one."
   }
 
   assert {

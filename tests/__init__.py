@@ -49,7 +49,8 @@ os.environ.setdefault("CONTACT_PROFILE", "local")
 #: ``ModeGates.all_off()`` or by re-importing the app with these variables removed.
 os.environ.setdefault("CONTACT_AGENT_ASSIST", "on")
 os.environ.setdefault("CONTACT_SELF_SERVICE", "on")
-#: And each mode's promotion evidence, because enabling a mode without naming the Hrz4 bundle
+#: And each mode's promotion evidence, because enabling a mode without naming the model-quality-gate
+#: bundle
 #: that authorised it is a boot refusal under any profile but a deliberate offline `local`. The
 #: suite re-imports the app under `gcp` and `onprem` to prove the exposure postures, so it has
 #: to be a configuration those profiles would actually accept.

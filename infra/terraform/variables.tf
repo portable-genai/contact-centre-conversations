@@ -10,7 +10,7 @@
 #   P-06 / R8 (maker-checker): `human_review_url` is required when the serving edge is
 #         enabled, because the managed review router refuses to swallow an escalation with no
 #         console configured. A deploy that would ship R8 unwired fails at plan time.
-#   R1 (everything through Hrz1): `guardrail_url` is required for the same reason. Every
+#   R1 (everything through agent-guardrail-gateway): `guardrail_url` is required for the same reason. Every
 #         inbound turn is redacted and then SCREENED, so an edge with no gateway configured
 #         cannot serve a single turn; it fails here instead of at the first live contact.
 #
@@ -240,7 +240,7 @@ variable "create_firestore_database" {
 
 # --------------------------------------------------------------------------- #
 # The two separately gated modes. Both are born OFF in the application and both
-# are born off here, because they are two Hrz4 releases with different risk
+# are born off here, because they are two model-quality-gate releases with different risk
 # postures: agent-assist whispers to a trained human, self-service reaches a
 # member of the public. Enabling one grants nothing to the other.
 # --------------------------------------------------------------------------- #
@@ -258,7 +258,7 @@ variable "enable_agent_assist" {
 
 variable "agent_assist_promotion_bundle" {
   description = <<-EOT
-    The Hrz4 metric bundle whose promotion verdict authorises the agent-assist mode
+    The model-quality-gate metric bundle whose promotion verdict authorises the agent-assist mode
     (CONTACT_AGENT_ASSIST_BUNDLE), for example "contact-centre-conversations-agent-assist". The
     application refuses to boot with a mode enabled and no bundle under any profile other than
     a deliberate offline local, so a served deployment requires it and this stack refuses at
@@ -286,7 +286,7 @@ variable "enable_self_service" {
 
 variable "self_service_promotion_bundle" {
   description = <<-EOT
-    The Hrz4 metric bundle whose promotion verdict authorises the self-service mode
+    The model-quality-gate metric bundle whose promotion verdict authorises the self-service mode
     (CONTACT_SELF_SERVICE_BUNDLE), for example "contact-centre-conversations-self-service". Required
     on a served deployment for the same reason as the agent-assist bundle, and it may never be
     the same bundle: a strong result in one mode can never carry the other over the line.
@@ -313,7 +313,7 @@ variable "self_service_promotion_bundle" {
 
 variable "human_review_url" {
   description = <<-EOT
-    The Hrz7 human-review console the managed review router submits escalations to
+    The human-review-console the managed review router submits escalations to
     (HUMAN_REVIEW_URL). Rule R8 says an escalation is ROUTED and never merely flagged, and
     the managed router refuses rather than swallowing one when this is empty, so the serving
     edge requires it: a deploy that would ship R8 unwired fails here instead of at the first
@@ -335,7 +335,7 @@ variable "human_review_url" {
 
 variable "guardrail_url" {
   description = <<-EOT
-    The Hrz1 Agent Guardrail Gateway every inbound turn is screened through after redaction
+    The agent-guardrail-gateway Agent Guardrail Gateway every inbound turn is screened through after redaction
     (GUARDRAIL_GATEWAY_URL, rule R1). The serving edge requires it: screening is not optional on
     this service, only a CLEAN screen may reach retrieval or generation, and a screen that
     cannot answer is UNAVAILABLE and fails closed per mode. With this empty the managed
@@ -351,13 +351,13 @@ variable "guardrail_url" {
 
   validation {
     condition     = !var.production_edge_enabled || can(regex("^https://", var.guardrail_url))
-    error_message = "production_edge_enabled requires guardrail_url (rule R1): every inbound turn is screened through the Hrz1 gateway, so a served deployment with none configured cannot handle a single turn."
+    error_message = "production_edge_enabled requires guardrail_url (rule R1): every inbound turn is screened through the agent-guardrail-gateway, so a served deployment with none configured cannot handle a single turn."
   }
 }
 
 variable "retrieval_url" {
   description = <<-EOT
-    The Hrz2 governed-RAG service the managed retrieval adapter queries
+    The enterprise-knowledge-base governed-RAG service the managed retrieval adapter queries
     (KNOWLEDGE_BASE_URL, rule R3). The serving edge requires it: a suggested reply is
     grounded in retrieved passages or it is not produced at all, and the managed adapter
     refuses an unconfigured index rather than answering from the model's own memory.
@@ -400,7 +400,7 @@ variable "tool_catalog_url" {
 
 variable "quality_service_url" {
   description = <<-EOT
-    The Hrz4 AI-quality service that owns the promotion verdict (CONTACT_QUALITY_URL, rule
+    The model-quality-gate AI-quality service that owns the promotion verdict (CONTACT_QUALITY_URL, rule
     R5). Empty leaves the variable unset, so the application takes its documented default.
     Never set it to an empty string on the service: the eval adapter treats SET-AND-EMPTY as
     naming no promotion authority at all, and refuses.
@@ -412,7 +412,7 @@ variable "quality_service_url" {
 variable "otlp_endpoint" {
   description = <<-EOT
     OpenTelemetry collector endpoint (OTEL_EXPORTER_OTLP_ENDPOINT, rule R2). Set it to the
-    Hrz5 collector to send spans there; leave it empty and the tracer exports straight to Cloud
+    agent-observability collector to send spans there; leave it empty and the tracer exports straight to Cloud
     Trace. Empty means the variable is not set on the service at all.
   EOT
   type        = string
@@ -444,7 +444,7 @@ variable "additional_secret_env" {
   description = <<-EOT
     Environment variable name to an immutable existing Secret Manager secret version, mounted
     on the API service. This is how the inbound service credential (CONTACT_S2S_TOKEN) and the
-    outbound credentials (S2S_TOKEN and S2S_SIGNING_KEY for Hrz1, Hrz2 and the action
+    outbound credentials (S2S_TOKEN and S2S_SIGNING_KEY for agent-guardrail-gateway, enterprise-knowledge-base and the action
     catalog; HUMAN_REVIEW_S2S_TOKEN and HUMAN_REVIEW_S2S_SIGNING_KEY for the review console) reach the
     process: no secret value is ever written into this configuration. Names this stack sets
     itself are reserved, so a secret cannot silently shadow the residency, identity, mode or

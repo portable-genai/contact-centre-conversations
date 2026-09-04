@@ -112,7 +112,9 @@ def test_every_documented_on_token_is_honoured(value: str) -> None:
 # Promotion evidence
 # --------------------------------------------------------------------------- #
 def test_a_mode_enabled_without_promotion_evidence_refuses_off_local() -> None:
-    """Each mode promotes on ITS OWN Hrz4 evidence, so an unevidenced one must not boot."""
+    """Each mode promotes on ITS OWN model-quality-gate evidence, so an unevidenced one must not
+    boot.
+    """
     with pytest.raises(ModeConfigurationError, match="promotion_bundle"):
         _resolve(
             {"agent_assist": {"enabled": "on"}, "self_service": _OFF},

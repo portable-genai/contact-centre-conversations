@@ -12,13 +12,12 @@ Four things, in this order, and each is a separate control:
    disclosure timing, the self-service gate verdict, the action, the handoff) comes from a pure
    deterministic engine over a reviewed pack. The model drafts prose.
 2. **The input is redacted and then screened**, in that order, by one object every turn passes
-   through (`domain/guardrails.py`), with the screen going to the Hrz1 gateway. An unreachable
+   through (`domain/guardrails.py`), with the screen going to the `agent-guardrail-gateway`. An unreachable
    screen becomes `UNAVAILABLE` and fails closed per mode, never CLEAN.
 3. **The output is validated against the retrieved passages.**
    `domain/suggestions.validate_draft` discards a draft whole if it is too long, cites a passage
    that was not retrieved, or states a number the passages did not supply. No repair, no retry.
-4. **Anything consequential is held.** It sets `requires_human_review` and is routed to the Hrz7
-   console in the same call that produced it (rule R8), on every surface.
+4. **Anything consequential is held.** It sets `requires_human_review` and is routed to the `human-review-console` in the same call that produced it (rule R8), on every surface.
 
 Underneath all four: `self_service` defaults OFF and refuses to boot without a promotion bundle,
 so reaching the public is a deliberate act with an evidence trail behind it.
@@ -28,7 +27,7 @@ so reaching the public is a deliberate act with an evidence trail behind it.
 They are not comparable, and `COMPLIANCE.md` treats them separately for that reason.
 `agent-assist` is internal decision-support with a trained human who decides; the failure mode is
 a bad suggestion an agent should catch. `self-service` reaches a member of the public directly;
-the failure mode is a customer acting on drafted words. Both promote through their own Hrz4
+the failure mode is a customer acting on drafted words. Both promote through their own `model-quality-gate`
 bundle with their own rubric set, so the evidence for one is never quoted for the other.
 
 ## Is a disclosure reminder the same thing as a disclosure?
@@ -85,17 +84,17 @@ employment-law question for the adopter, not a control this repo can ship.
 `COMPLIANCE.md` marks these honestly rather than claiming them.
 
 - **R2, the shared observability sink.** The immutable audit half is local and tamper-evident;
-  binding an observability client to Hrz5 is open.
+  binding an observability client to `agent-observability` is open.
 - **R4 and R5, the registry and the promotion gate.** The A2A card and the `--mode gate` client
-  half both exist; registering with Hrz3, and both bundles with Hrz4, is a deployment act.
+  half both exist; registering with `agent-registry`, and both bundles with `model-quality-gate`, is a deployment act.
 - **P-09, network perimeter.** CMEK with a per-service-agent binding, least-privilege IAM, no
   service-account keys, IAP in front of the backend and a Cloud Armor throttle all ship in
   `infra/terraform/`. Private endpoints and a distinct agent identity are recorded as open.
-- **R6, intake validation.** Record the Rsk3 reference when the project passes it.
+- **R6, intake validation.** Record the `architecture-validator` reference when the project passes it.
 
 One row is worth reading with care rather than at face value: R3 in `COMPLIANCE.md` still says no
 retrieval happens, which no longer matches the tree now that `ports/retrieval.py` is bound to
-Hrz2. Treat the code as the evidence and expect that row to be corrected.
+`enterprise-knowledge-base`. Treat the code as the evidence and expect that row to be corrected.
 
 ## Who owns the regulator crosswalk?
 
@@ -112,7 +111,7 @@ per metric and fail the build if it still passes.
 
 What does not exist yet is a managed-profile evaluation: the offline rubrics score the
 deterministic engines and the passage-composing drafter, not live Gemini output. Registering both
-bundles with Hrz4 and running a managed evaluation per mode is the open item in
+bundles with `model-quality-gate` and running a managed evaluation per mode is the open item in
 [`../model-card.md`](../model-card.md), and until it is done the managed model path is not
 production-cleared for either mode.
 

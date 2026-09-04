@@ -6,12 +6,12 @@
 #         persist a contact and its redacted turns, write audit and traces, draft a cited
 #         reply, read its own secrets). No shared kitchen-sink account and no primitive roles.
 #   P-03 (residency): the identity is project-scoped and every service it reaches is regional.
-#   R1 / R3 / R8: screening through Hrz1, retrieval through Hrz2, routing an escalation to the
-#         Hrz7 console and describing an action through the client's catalog are all outbound
+#   R1 / R3 / R8: screening through agent-guardrail-gateway, retrieval through enterprise-knowledge-base, routing an escalation to the
+#         human-review-console and describing an action through the client's catalog are all outbound
 #         HTTPS calls carrying a service credential from Secret Manager, not GCP IAM roles, so
 #         nothing is granted for any of them here.
 #
-# There is deliberately ONE service account. Doc1 carries a second identity for its Agent
+# There is deliberately ONE service account. cdd-sow-research carries a second identity for its Agent
 # Runtime; this repo's agent surface is a set of plain tool callables that run inside the same
 # process as the API (nothing in agent/ needs a runtime to import), so a second identity would
 # have nothing to attach to and would only widen what is provisioned. Add one in the same

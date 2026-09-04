@@ -1,10 +1,10 @@
 """Service-to-service transport shared by the platform-remote adapters in this family.
 
-Three of E1's managed adapters are not cloud SDK clients at all: the Hrz1 guardrail screen, the
-Hrz2 governed-RAG retrieval and the MCP action catalog are HTTP calls to sibling services. They
-ride the same S2S rules every other producer uses, sourced from the commons rather than
-restated: an ``https://`` base URL outside loopback, a bearer token, and an optional HMAC-signed
-end-user actor.
+Three of E1's managed adapters are not cloud SDK clients at all: the agent-guardrail-gateway screen,
+the enterprise-knowledge-base governed-RAG retrieval and the MCP action catalog are HTTP calls to
+sibling services. They ride the same S2S rules every other producer uses, sourced from the commons
+rather than restated: an ``https://`` base URL outside loopback, a bearer token, and an optional
+HMAC-signed end-user actor.
 
 Every read here resolves THREE states, and that is the commons' own work rather than this
 module's. A header builder that takes env var NAMES and strips a value before it tests it

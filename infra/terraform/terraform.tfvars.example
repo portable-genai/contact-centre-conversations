@@ -60,7 +60,7 @@ alert_notification_channels = [
 create_firestore_database = true
 
 # ----------------------------------------------------------------------------- #
-# The two separately gated modes. BOTH BORN OFF, and each carries its own Hrz4
+# The two separately gated modes. BOTH BORN OFF, and each carries its own model-quality-gate
 # promotion bundle: they are two releases with different risk postures, so a
 # strong result in one can never carry the other over the line. With both off the
 # platform still deploys and every mode route answers 503, which is the right
@@ -97,7 +97,7 @@ production_edge_enabled = false
 # flag lives.
 # tool_catalog_url = "https://actions.fictional-bank.example"
 
-# Rule R5 and rule R2: the Hrz4 promotion authority and the Hrz5 collector. Leave a
+# Rule R5 and rule R2: the model-quality-gate promotion authority and the agent-observability collector. Leave a
 # variable out entirely rather than setting it to an empty string; empty is read as a
 # deliberate "no authority named" and refuses.
 # quality_service_url = "https://quality.fictional-bank.example"
@@ -118,7 +118,7 @@ production_edge_enabled = false
 
 # Credentials arrive as pinned Secret Manager versions, never as values here. The
 # inbound token is what a calling service presents to this one; the platform pair
-# authenticates the outbound calls to Hrz1, Hrz2 and the action catalog, and the
+# authenticates the outbound calls to agent-guardrail-gateway, enterprise-knowledge-base and the action catalog, and the
 # HUMAN_REVIEW_S2S_* pair the outbound calls to the review console.
 # additional_secret_env = {
 #   CONTACT_S2S_TOKEN    = { secret_id = "contact-inbound-s2s", version = "3" }

@@ -114,7 +114,7 @@ against the pipeline's own verdict is a tautology with a threshold.
 
 The deterministic metrics above answer whether a turn was allowed, grounded, cited and
 clean. A reply can be all four and still be useless, so the rest is judged, against
-floors owned by model risk (Hrz4 promotion authority) in `config/quality-floors.toml`.
+floors owned by model risk (model-quality-gate promotion authority) in `config/quality-floors.toml`.
 
 A score at or above the target is full quality. Below the floor the profile must not
 serve that vertical at all. Between them it is DEGRADED: usable, and visibly worse.
@@ -152,7 +152,7 @@ Named, rather than left to be discovered:
 - **The voice path.** The SIP and RTP gateway carries no scenarios. Word error rate per locale
   and per channel needs audio corpora, which is a different kind of eval work.
 - **A live promotion gate.** `--mode gate` is covered offline against a mocked authority
-  (`tests/unit/test_eval_gate_mode.py`); a call to a deployed Hrz4 is still unproven.
+  (`tests/unit/test_eval_gate_mode.py`); a call to a deployed `model-quality-gate` is still unproven.
 - **A real model.** Every metric scores the offline template drafter, so the citation and
   grounding metrics currently measure the validator rather than a model's restraint. The judged
   half is where model quality is assessed, and it grades recorded text rather than a live call.

@@ -24,9 +24,9 @@ the ``[project.scripts]`` entry point in ``pyproject.toml`` is
 second flag could only drift out of step with it.
 
 ``--resource`` is one literal doing four jobs: the distribution name in ``pyproject.toml``, the
-GitHub id in ``[project.urls]``, the A2A agent-card name and the Hrz4 eval bundle id. They are
-the same string on purpose, so a fork's promotion record and its discovery card cannot disagree
-about which system they describe.
+GitHub id in ``[project.urls]``, the A2A agent-card name and the model-quality-gate eval bundle id.
+They are the same string on purpose, so a fork's promotion record and its discovery card cannot
+disagree about which system they describe.
 
 ``--name-prefix`` is the Terraform ``name_prefix`` default that every deployed resource name is
 derived from. It is rewritten ONLY inside its own variable block in

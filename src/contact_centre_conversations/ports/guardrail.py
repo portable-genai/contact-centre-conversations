@@ -1,9 +1,9 @@
-"""GuardrailPort: per-turn prompt-injection and abuse screening, via the Hrz1 gateway.
+"""GuardrailPort: per-turn prompt-injection and abuse screening, via the agent-guardrail-gateway.
 
 Every inbound turn is screened AFTER redaction and BEFORE any retrieval or generation call (see
-``domain/guardrails.py``, which owns that ordering). The remote family is a thin S2S client to
-the shared Hrz1 Agent Guardrail Gateway; Mkt6's platform family is the reference for the
-transport.
+``domain/guardrails.py``, which owns that ordering). The remote family is a thin S2S client to the
+shared agent-guardrail-gateway Agent Guardrail Gateway; marketing-compliance-gate's platform family
+is the reference for the transport.
 
 **Unavailable is a verdict, not an exception the caller may ignore.** An adapter that cannot
 reach the gateway raises, and ``TurnGuard`` converts the raise into

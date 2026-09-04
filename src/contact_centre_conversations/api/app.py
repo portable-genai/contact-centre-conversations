@@ -343,7 +343,8 @@ def agent_assist_turn(
 
     Gated by ``modes.agent_assist``: this route refuses with 503 unless the deployment enabled
     the mode, and both modes are off until somebody says otherwise. Rule R8 applies inside the
-    service: a missed disclosure window is routed to Hrz7 in the same call that found it.
+    service: a missed disclosure window is routed to human-review-console in the same call that
+    found it.
     """
     return AssistResponse.from_domain(
         _run(
@@ -365,7 +366,8 @@ def self_service_turn(
     """Answer one customer turn, or refuse it and hand off.
 
     Gated by ``modes.self_service``, separately from agent-assist: this mode is customer-facing
-    and promotes on its own Hrz4 evidence, so enabling the other one grants nothing here.
+    and promotes on its own model-quality-gate evidence, so enabling the other one grants nothing
+    here.
     """
     return SelfServiceResponse.from_domain(
         _run(

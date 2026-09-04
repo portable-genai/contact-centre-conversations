@@ -1,16 +1,17 @@
 """Shared conversion from an escalated result to an ``review-kit`` Review payload.
 
 Lives in the adapter layer, not the pure domain, because it depends on the kit. Everything that
-crosses the wire is redacted BEFORE it leaves the process (the same redact-before-anything rule
-the audit write obeys), using the shared ``pii-kit``, so no raw identifier reaches Hrz7; Hrz7
-redacts again before its own audit write (defence in depth). ``maker`` and ``tenant`` are
-asserted here and trusted by Hrz7 because the caller is an authenticated S2S service.
+crosses the wire is redacted BEFORE it leaves the process (the same redact-before-anything rule the
+audit write obeys), using the shared ``pii-kit``, so no raw identifier reaches human-review-console;
+human-review-console redacts again before its own audit write (defence in depth). ``maker`` and
+``tenant`` are asserted here and trusted by human-review-console because the caller is an
+authenticated S2S service.
 
-**The mode travels with the review.** Each of E1's two modes is its own Hrz4 gated release, so a
-reviewer needs to know whether they are looking at a whisper-panel escalation from an
+**The mode travels with the review.** Each of E1's two modes is its own model-quality-gate gated
+release, so a reviewer needs to know whether they are looking at a whisper-panel escalation from an
 internal-facing copilot or a refusal from a customer-facing assistant. It is carried in the
-``action`` and in the ``sod_group`` rather than only in the summary, so the console can route
-and separate on it without parsing prose.
+``action`` and in the ``sod_group`` rather than only in the summary, so the console can route and
+separate on it without parsing prose.
 """
 
 from __future__ import annotations
@@ -110,7 +111,9 @@ def _disclosure_citations(result: ReviewableResult) -> list[Citation]:
 
 
 def result_to_review(result: ReviewableResult, *, maker: str, tenant: str = "") -> Review:
-    """Build the review a producer submits to Hrz7 when a result escalates (rule R8)."""
+    """Build the review a producer submits to human-review-console when a result escalates (rule
+    R8).
+    """
     mode = result.mode.value
     severity = _severity(result)
     contact = result.contact
@@ -127,6 +130,6 @@ def result_to_review(result: ReviewableResult, *, maker: str, tenant: str = "") 
         sod_group=f"{_PREFIX}-{mode}-maker-checker",
         case_ref=_case_ref(result),
         # Producer-owned, tenant-scoped key so a retried delivery is idempotent at the console.
-        source_key=f"E1:{mode}:{_case_ref(result)}",
+        source_key=f"contact-centre-conversations:{mode}:{_case_ref(result)}",
         citations=_kit_citations(result),
     )

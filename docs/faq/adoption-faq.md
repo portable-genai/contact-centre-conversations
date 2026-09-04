@@ -8,7 +8,7 @@ For the engineering lead who has been handed this repository. The long form is
 Which modes you run. Both `agent_assist` and `self_service` default OFF, and turning on the
 second one is a different conversation from turning on the first: `self_service` reaches a
 member of the public with drafted prose, `agent_assist` puts a trained human between the model
-and the customer. Each has its own Hrz4 promotion bundle
+and the customer. Each has its own `model-quality-gate` promotion bundle
 (`CONTACT_AGENT_ASSIST_BUNDLE`, `CONTACT_SELF_SERVICE_BUNDLE`), its own rubric set and its own
 sign-off. A mode enabled with no bundle refuses to boot under any profile except a deliberate
 offline `local`.
@@ -40,7 +40,7 @@ without `--yes`. There is no `--cli` flag because `[project.scripts]` names the 
 after the package, and no `--dist` flag because the distribution name, the GitHub id and the A2A
 agent-card name are the same one literal that `--resource` renames.
 
-It does NOT rename the two Hrz4 promotion bundle ids, on purpose: they are deployment values, and
+It does NOT rename the two `model-quality-gate` promotion bundle ids, on purpose: they are deployment values, and
 a promotion record that silently changed identity would be worse than one you had to set by hand.
 
 Recreate the venv afterwards: the distribution name changed, so an existing editable install
@@ -108,12 +108,12 @@ rebuild both golden sets for your packs.
 ## What do we have to supply that is not in the repo?
 
 1. **Policy packs**, signed off by conduct. Everything else is downstream of them.
-2. **A knowledge corpus**, governed, reachable through Hrz2 or supplied as a fixture. Its quality
+2. **A knowledge corpus**, governed, reachable through `enterprise-knowledge-base` or supplied as a fixture. Its quality
    IS the quality of the suggestions.
-3. **An Hrz1 gateway** at `guardrail_url`, and a decision about what an unavailable screen costs
+3. **An `agent-guardrail-gateway`** at `guardrail_url`, and a decision about what an unavailable screen costs
    per mode.
 4. **An IdP**, configured on the deployed service, plus `CONTACT_IAP_AUDIENCE`.
-5. **An Hrz7 endpoint**, or nothing consequential reaches a human.
+5. **An `human-review-console` endpoint**, or nothing consequential reaches a human.
 6. **A promotion bundle per mode**, or the mode refuses to boot outside `local`.
 
 ## What is still open?
@@ -121,6 +121,5 @@ rebuild both golden sets for your packs.
 [`../practices-audit.md`](../practices-audit.md) carries the honest per-check verdict, and it
 says one thing worth repeating here: this repo has not entered the cross-repo practices-audit
 matrix, so every row in it is a self-assessment against the tree rather than an independent
-review. The items that need your network and your project rather than a code change are the Hrz5
-observability binding, registering both bundles with Hrz4, and the private-egress rule. The
+review. The items that need your network and your project rather than a code change are the `agent-observability` binding, registering both bundles with `model-quality-gate`, and the private-egress rule. The
 Terraform in this repo is validated and tested offline and has never been applied.

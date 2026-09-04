@@ -1,10 +1,10 @@
 """Local GuardrailPort: a deterministic offline screen over an explicit injection cue set.
 
-It is a stand-in for the Hrz1 gateway, and it is a REAL screen rather than a pass-through: the
-cue set below is the corpus the injection tests are built from, so a turn carrying a known
-injection pattern is BLOCKED offline exactly as it would be by the gateway. That matters because
-the property under test is "an injection never reaches the generation port", and a local adapter
-that waved everything through would make that test vacuous while keeping it green.
+It is a stand-in for the agent-guardrail-gateway, and it is a REAL screen rather than a
+pass-through: the cue set below is the corpus the injection tests are built from, so a turn carrying
+a known injection pattern is BLOCKED offline exactly as it would be by the gateway. That matters
+because the property under test is "an injection never reaches the generation port", and a local
+adapter that waved everything through would make that test vacuous while keeping it green.
 
 The cues are lowercase substrings matched against the already-redacted text. Crude on purpose:
 this is the offline family, and a clever local screen would tempt somebody to ship it.

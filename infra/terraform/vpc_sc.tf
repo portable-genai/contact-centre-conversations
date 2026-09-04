@@ -22,7 +22,7 @@
 #
 # NOTE on egress: VPC-SC governs access to GOOGLE APIs across perimeters, not arbitrary
 # internet egress. Four of this service's dependencies are ordinary HTTPS to non-Google hosts:
-# the Hrz1 guardrail screen, the Hrz2 knowledge base, the Hrz7 review console (rule R8) and the
+# the agent-guardrail-gateway screen, the enterprise-knowledge-base knowledge base, the human-review-console (rule R8) and the
 # client's action catalog. Those are a VPC firewall and Cloud NAT concern, not a VPC-SC egress
 # rule. Run the service with egress that reaches exactly those four and nothing else.
 

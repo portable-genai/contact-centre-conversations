@@ -36,7 +36,7 @@ exists.
 - `ports/` : `@runtime_checkable` Protocols, re-exported once with the `PORT_PROTOCOLS` map. The
   identity port comes from the commons and the three SPEECH ports come from
   `speech-lexicon-kit`, for the same reason: one owner per boundary. `retrieval.py` carries the
-  Hrz2 governed-RAG shape and the PROPOSED remote contract, written down because no built repo
+  `enterprise-knowledge-base` governed-RAG shape and the PROPOSED remote contract, written down because no built repo
   shipped one before this. `identity.py` adds
   this service's own identity vocabulary: what an adapter DECLARES about the end-user
   authentication it provides (`VERIFIED` / `CLIENT_ASSERTED` / `UNIMPLEMENTED`), which is what the
@@ -90,7 +90,7 @@ behavioural suites cannot quietly assert different things.
 
 ## Request pipeline (one turn, either mode)
 redact-before-audit (P-04) -> deterministic severity band -> soft escalation (P-06) -> already
-redacted WORM audit write -> **route the escalation to Hrz7 (R8)**. The audit actor and the
+redacted WORM audit write -> **route the escalation to `human-review-console` (R8)**. The audit actor and the
 review maker are both the verified `Principal`, never the request body. Routing happens in the
 same request that produced the result, on the API and CLI surfaces alike, so an escalation never
 depends on a later job that may not exist.
@@ -100,7 +100,7 @@ depends on a later job that may not exist.
 |---|---|---|---|
 | `AuditSinkPort` | hash-chained SQLite WORM (commons) | Cloud Logging WORM (lazy) | placeholder |
 | `IdentityPort` | seeded personas (commons) | IAP assertion (lazy) | placeholder |
-| `ReviewRouterPort` | review-kit outbox (offline, inspectable) | Hrz7 service intake over S2S | placeholder |
+| `ReviewRouterPort` | review-kit outbox (offline, inspectable) | `human-review-console` service intake over S2S | placeholder |
 
 The on-prem placeholders RAISE. A review router that silently returned would convert every
 consequential result into an unreviewed one, which is worse than a missing feature.

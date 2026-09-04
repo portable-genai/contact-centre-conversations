@@ -16,7 +16,7 @@ authors = [{ name = "Ashish Awasthi" }]
 # cloud SDKs live in the [gcp] extra so the local/onprem gate installs none of them.
 #
 # `review-kit` is not optional: rule R8 says a producer that sets `requires_human_review`
-# MUST route the item to the Hrz7 Human-Review console rather than terminate the escalation in a
+# MUST route the item to the human-review-console Human-Review console rather than terminate the escalation in a
 # per-repo boolean, and the ReviewRouterPort adapters are bound in EVERY profile.
 #
 # `speech-lexicon-kit` owns the transcript, speaker-turn, word-offset, channel-role and
@@ -43,7 +43,7 @@ dev = [
   # decision's case, where a stale floor silently permits the behaviour just removed.
   "mypy>=2.3.1",
   "pytest>=8.2",
-  # Wire-level mocking for the outbound Hrz4 promotion client, so `--mode gate` is covered
+  # Wire-level mocking for the outbound model-quality-gate promotion client, so `--mode gate` is covered
   # offline. No test may need a reachable sibling service or a model server.
   "respx>=0.21",
   "types-PyYAML>=6.0",

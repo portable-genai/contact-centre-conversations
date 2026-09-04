@@ -9,8 +9,8 @@
 #         to ports, never to these resources.
 #
 # Only the GA google provider is required. Nothing in this stack needs google-beta: the beta
-# surface was a Doc1 requirement (Model Armor templates), and this service screens through the
-# Hrz1 gateway over HTTPS instead of a managed guardrail resource, so carrying a second provider
+# surface was a cdd-sow-research requirement (Model Armor templates), and this service screens through the
+# agent-guardrail-gateway over HTTPS instead of a managed guardrail resource, so carrying a second provider
 # would be carrying an unused dependency.
 
 terraform {
