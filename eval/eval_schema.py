@@ -30,10 +30,7 @@ __all__ = [
     "load_scenarios",
 ]
 
-#: The market and locale pairs this service ships packs for. A scenario naming anything else
-#: would be scored against packs that do not exist, which surfaces as a runtime error deep in a
-#: service rather than as a dataset problem.
-_MARKET_LOCALE = {"SG": "en-SG", "JP": "ja-JP"}
+
 _VERTICALS = ("retail_banking", "general_insurance")
 _TENANTS = ("demo-bank", "demo-insurer", "rival-bank")
 
@@ -41,6 +38,11 @@ _TENANTS = ("demo-bank", "demo-insurer", "rival-bank")
 #: a typo would silently create a group of one that nobody notices is missing from the others.
 SELF_SERVICE_FAMILIES = (
     "benign",
+    # A customer volunteering an identifier mid sentence, which is what customers do. Its own
+    # family rather than `benign` because the report groups by family and these are the only
+    # scenarios that exercise the national-id rows in the redaction path: folded into benign,
+    # a market losing its only PII case would leave the group's size unchanged.
+    "pii",
     "high_stakes",
     "out_of_scope",
     "cross_party",
@@ -88,6 +90,46 @@ _FORBIDDEN_DASHES = ("—", "–")
 
 class ScenarioError(ValueError):
     """A scenario file is missing a field, names something unknown, or contradicts itself."""
+
+
+def _market_locales() -> dict[str, str]:
+    """The market and locale pairs this service ships ALLOWLIST packs for, read from the packs.
+
+    This was a hard-coded ``{"SG": ..., "JP": ...}`` and the cost of that was not the duplication.
+    It was that adding a market meant editing a table in the eval as well as shipping the packs,
+    and the failure when somebody did the second without the first read as "market has no packs"
+    against a directory full of them. Derived here, the two cannot disagree: a market is known to
+    the eval exactly when the service can serve it.
+
+    Keyed on the ALLOWLIST rather than on any pack, because the allowlist is what makes a market
+    servable at all. A market with cues and disclosures and no allowlist refuses every contact,
+    and a scenario written against it would be scoring a refusal nobody intended.
+    """
+    packs = Path(__file__).resolve().parent.parent / "config" / "packs"
+    out: dict[str, str] = {}
+    for path in sorted(packs.glob("allowlist-*.yaml")):
+        document = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        market = str(document.get("market") or "").strip()
+        locale = str(document.get("locale") or "").strip()
+        if not market or not locale:
+            continue
+        existing = out.setdefault(market, locale)
+        if existing != locale:
+            raise ScenarioError(
+                f"{path}: market {market!r} is served under two locales ({existing!r} and "
+                f"{locale!r}); a scenario could then be scored against either"
+            )
+    if not out:
+        raise ScenarioError(
+            f"{packs}: no allowlist pack names a market, so every scenario would be rejected"
+        )
+    return out
+
+
+#: The market and locale pairs this service ships packs for. A scenario naming anything else
+#: would be scored against packs that do not exist, which surfaces as a runtime error deep in a
+#: service rather than as a dataset problem.
+_MARKET_LOCALE = _market_locales()
 
 
 def _fail(where: str, message: str) -> None:

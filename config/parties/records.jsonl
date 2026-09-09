@@ -27,3 +27,6 @@
 {"party_ref": "party-ji-0001", "tenant": "demo-insurer", "parameter": "policy_ref", "value": "POL-MOTOR-201"}
 {"party_ref": "party-ji-0001", "tenant": "demo-insurer", "parameter": "claim_ref", "value": "CLM-2001"}
 {"party_ref": "party-jp-0001", "tenant": "demo-bank", "parameter": "card_last4", "value": "5566"}
+{"party_ref": "party-hk-0001", "tenant": "demo-bank", "parameter": "card_last4", "value": "7788"}
+{"party_ref": "party-au-0001", "tenant": "demo-bank", "parameter": "card_last4", "value": "9012"}
+{"party_ref": "party-au-0001", "tenant": "demo-bank", "parameter": "transaction_ref", "value": "TXN-000099"}

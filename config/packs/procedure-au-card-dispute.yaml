@@ -1,0 +1,87 @@
+# Procedure pack: a disputed card transaction, Australia retail bank (FICTIONAL policy).
+#
+# This is the reviewed policy, as DATA. The engine in domain/procedure_engine.py walks it; no
+# code in this repository knows what a card dispute is.
+#
+# What is here and in no other market's procedure is `hardship_raised`, and it is the reason
+# this file is not a copy of SG's. In this market a caller mentioning financial hardship starts
+# a defined process with an obligation attached, and the disclosure pack opens a 30-second
+# referral window off this lexicon entry. A market pack that omitted the entry would leave that
+# window unable to open, which is exactly the failure the cross-reference check refuses.
+kind: procedure
+pack_id: au-card-dispute-v1
+market: AU
+vertical: retail_banking
+locale: en-AU
+initial_state: greeting
+
+lexicon:
+  - entry_id: greeting_given
+    phrases:
+      - thank you for calling
+      - thanks for calling
+      - how can i help you today
+  - entry_id: identity_verified
+    phrases:
+      - confirm your date of birth
+      - last four digits of your card
+      - security questions
+  - entry_id: dispute_details_taken
+    phrases:
+      - when did you notice the transaction
+      - which merchant
+      - the amount of the transaction
+  - entry_id: hardship_raised
+    phrases:
+      - you mentioned financial hardship
+      - you said you are struggling to pay
+      - about the hardship you raised
+  - entry_id: card_blocked
+    phrases:
+      - i have blocked the card
+      - the card is now blocked
+      - blocking the card now
+  - entry_id: outcome_explained
+    phrases:
+      - provisional credit
+      - you will receive a replacement card
+      - the investigation takes
+
+states:
+  - state_id: greeting
+    title: Open the contact
+    instruction: Greet the caller by name and ask how you can help today.
+    exit_criteria: [greeting_given]
+    required_evidence: [greeting_given]
+    transitions: [verify_identity]
+    role: agent
+  - state_id: verify_identity
+    title: Verify the caller
+    instruction: >-
+      Verify the caller before discussing any account detail, taking date of birth and the last
+      four digits of the card.
+    exit_criteria: [identity_verified]
+    required_evidence: [identity_verified]
+    transitions: [take_dispute]
+    role: agent
+  - state_id: take_dispute
+    title: Take the dispute detail
+    instruction: Ask when the transaction was noticed, which merchant, and the amount.
+    exit_criteria: [dispute_details_taken]
+    required_evidence: [dispute_details_taken]
+    transitions: [block_card]
+    role: agent
+  - state_id: block_card
+    title: Block the card
+    instruction: Block the card and tell the caller you have done it.
+    exit_criteria: [card_blocked]
+    required_evidence: [card_blocked]
+    transitions: [explain_outcome]
+    role: agent
+  - state_id: explain_outcome
+    title: Explain what happens next
+    instruction: Explain provisional credit, the replacement card and the investigation window.
+    exit_criteria: [outcome_explained]
+    required_evidence: [outcome_explained]
+    transitions: []
+    role: agent

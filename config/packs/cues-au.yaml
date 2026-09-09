@@ -1,0 +1,35 @@
+# Cue pack: Australia retail banking (FICTIONAL policy).
+#
+# Two customer-side phrase lists the deterministic handoff triggers read. They are policy: a
+# bank decides what counts as a vulnerability cue in its market. Matching is exact-phrase, so a
+# paraphrase nobody listed does NOT match: these lists are a floor and never a claim of
+# complete coverage.
+#
+# What differs from SG, and why the difference is the reason this pack exists rather than a
+# copy: financial hardship is a named process in this market with an obligation attached, and
+# the words a customer actually uses to invoke it are local. "I want to apply for hardship" is a
+# request for a defined process, not a description of a feeling, and an assistant that answered
+# it with a balance would have failed the customer at the exact moment it mattered. The family
+# violence phrases are here for the same reason and are the strongest reason in the file for the
+# cue list to be reviewed policy rather than anything a model infers.
+kind: cues
+pack_id: au-customer-cues-v1
+market: AU
+vertical: retail_banking
+locale: en-AU
+
+escalation:
+  - speak to a person
+  - speak to a human
+  - talk to someone
+  - put me through to an agent
+  - can i talk to a real person
+
+vulnerability:
+  - i am struggling to pay
+  - i cannot afford
+  - i have been scammed
+  - someone is forcing me
+  - i want to apply for hardship
+  - i am in financial hardship
+  - i am not safe at home

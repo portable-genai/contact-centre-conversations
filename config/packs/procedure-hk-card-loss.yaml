@@ -1,0 +1,82 @@
+# Procedure pack: a lost card, Hong Kong retail bank (FICTIONAL policy).
+#
+# This is the reviewed policy, as DATA. The engine in domain/procedure_engine.py walks it; no
+# code in this repository knows what a lost-card call is. Changing the wording, the order or the
+# required evidence is an edit to this file and a pack-schema check, never a release.
+#
+# HK gets a lost-card procedure rather than a copy of SG's dispute procedure because HK's
+# allowlist ships no chargeback intent: a market's procedure pack should cover what that market
+# actually automates, and a procedure for an action nobody may take is a state machine that
+# never runs.
+kind: procedure
+pack_id: hk-card-loss-v1
+market: HK
+vertical: retail_banking
+locale: en-HK
+initial_state: greeting
+
+lexicon:
+  - entry_id: greeting_given
+    phrases:
+      - thank you for calling
+      - thanks for calling
+      - how can i help you today
+  - entry_id: identity_verified
+    phrases:
+      - confirm your date of birth
+      - last four digits of your card
+      - security questions
+  - entry_id: loss_circumstances_taken
+    phrases:
+      - when did you last use the card
+      - where do you think you lost it
+      - has anyone else used it
+  - entry_id: card_blocked
+    phrases:
+      - i have blocked the card
+      - the card is now blocked
+      - blocking the card now
+  - entry_id: outcome_explained
+    phrases:
+      - you will receive a replacement card
+      - your liability for transactions
+      - the replacement takes
+
+states:
+  - state_id: greeting
+    title: Open the contact
+    instruction: Greet the caller by name and ask how you can help today.
+    exit_criteria: [greeting_given]
+    required_evidence: [greeting_given]
+    transitions: [verify_identity]
+    role: agent
+  - state_id: verify_identity
+    title: Verify the caller
+    instruction: >-
+      Verify the caller before discussing any account detail, taking date of birth and the last
+      four digits of the card.
+    exit_criteria: [identity_verified]
+    required_evidence: [identity_verified]
+    transitions: [take_circumstances]
+    role: agent
+  - state_id: take_circumstances
+    title: Take the circumstances of the loss
+    instruction: Ask when the card was last used, where it was lost, and whether anyone else used it.
+    exit_criteria: [loss_circumstances_taken]
+    required_evidence: [loss_circumstances_taken]
+    transitions: [block_card]
+    role: agent
+  - state_id: block_card
+    title: Block the card
+    instruction: Block the card and tell the caller you have done it.
+    exit_criteria: [card_blocked]
+    required_evidence: [card_blocked]
+    transitions: [explain_outcome]
+    role: agent
+  - state_id: explain_outcome
+    title: Explain what happens next
+    instruction: Explain the replacement card, the timing and the caller's liability position.
+    exit_criteria: [outcome_explained]
+    required_evidence: [outcome_explained]
+    transitions: []
+    role: agent
