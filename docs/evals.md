@@ -148,6 +148,56 @@ in which any draft had no recording fails whole, whatever the metrics said, beca
 deliberately degrades a generation failure to silence and silence is scoreable; the console names
 the missing recordings and the command that re-records them.
 
+## What happened when a real model was finally in the path
+
+This was the largest honest gap in the suite and it is closed. `eval/datasets/gemini_replay.jsonl`
+holds 32 replies recorded from `gemini-3.5-flash` over these same scenarios, and
+`eval/run_eval.py --drafter replay-gemini` scores the same rubrics and the same hand-written
+labels against them, offline, with nothing reachable. It runs in `make gate`.
+
+Two things came out of it, and the second is the one this page exists to say.
+
+**The managed drafter was dead, silently, and nothing here could have told you.** The first
+recording produced 32 rows of `"response": null`. `VertexGenerationAdapter` capped output at 512
+tokens, the configured model spends output tokens reasoning before it answers, so the JSON was
+truncated on every single request, `response.parsed` came back `None`, and `draft` returned
+`None`. The kernel treats any generation failure as silence, deliberately, because for the
+product a model outage must degrade to "no suggestion" rather than to an unvalidated fallback.
+So on the managed profile this service would have produced no suggestion for any contact, in any
+market, and said nothing about why. The fix is one line, `thinking_config` with a zero budget,
+and the bound stays: the drafter's job is one short grounded sentence, and a drafter that needs
+to reason at length about which passage to quote is answering a different question. No offline
+metric could have found this, because no offline metric had a model in it.
+
+**The grounding metrics were measuring the validator, exactly as the model card said.** Same
+rubrics, same labels, same corpus, only the drafter changed:
+
+| Metric | Offline template drafter | Recorded `gemini-3.5-flash` |
+|---|---|---|
+| `groundedness` | 1.000 | **0.500** |
+| `citation_accuracy` | 1.000 | **0.833** |
+
+Two causes, different in kind, and neither is repaired here because a bar tuned until the number
+looks acceptable measures nothing:
+
+1. **The model returns an empty draft on some turns** where the template always produced one.
+   A real capability gap, correctly caught, and the one that matters most in this product
+   because an empty draft reaches the agent as no suggestion at all.
+2. **The fact check requires the canonical phrasing.** The label says "Calls are recorded for
+   quality and training"; the model wrote "we record our calls for quality and training
+   purposes". Same fact, scored 0. Against a template that emits the corpus sentence verbatim
+   that check could never fail; against a model it is a PHRASING check wearing a groundedness
+   name. It is not loosened, because replacing a strict check with a fuzzy one replaces a
+   measurement with a judgement, and this repository already has a place for judgements:
+   `eval/run_narrative_eval.py`, judged against owned floors.
+
+`eval/rubrics/replay/` holds the bars for that run, and they are a REGRESSION FLOOR under a
+measured baseline rather than a quality target. Only two metrics take them, because only two of
+these metrics measure the drafter at all; moving the others would be excusing a real regression
+under cover of the model swap. What the floor buys is that the gap is in the gate output on
+every run instead of in a document, and that a prompt change making the model worse fails the
+build. Raising it is the work, and the two causes above say what that work is.
+
 ## What the HK and AU markets found
 
 The PII pattern set covers four jurisdictions. `adapters/_review_payload.py` scrubs against
@@ -194,15 +244,9 @@ Named, rather than left to be discovered:
   and per channel needs audio corpora, which is a different kind of eval work.
 - **A live promotion gate.** `--mode gate` is covered offline against a mocked authority
   (`tests/unit/test_eval_gate_mode.py`); a call to a deployed `model-quality-gate` is still unproven.
-- **A real model.** Every metric scores the offline template drafter, so the citation and
-  grounding metrics currently measure the validator rather than a model's restraint. The judged
-  half is where model quality is assessed, and it grades recorded text rather than a live call.
-  `eval/replay_generation.py` is the path that would close this and it needs
-  `eval/datasets/gemini_replay.jsonl`, which is not committed: producing it means running
-  `scripts/record_gemini_fixtures.py` against the managed profile with real credentials, which
-  is an authoring step a person takes deliberately. Until then the replay path exists, refuses
-  loudly on a missing recording, and is not exercised by the gate. That is the single largest
-  honest gap in this suite and it is unchanged by this round of work.
+- **A LIVE model.** The replay run below scores what a real model wrote, once, against a fixed
+  corpus. It cannot see a model that changes under the service, and it is not a substitute for
+  evaluating a live call.
 - **Agent assist beyond SG banking.** The whisper panel's scenarios cover one vertical in one
   market; JP and the insurance vertical are exercised only on the customer-facing mode. The
   packs and corpus for those combinations exist, so this is authoring work, not product work.

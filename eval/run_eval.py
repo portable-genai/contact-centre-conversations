@@ -55,7 +55,19 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 AGENT_ASSIST = "agent_assist"
 SELF_SERVICE = "self_service"
+
+#: The rubric group holding the bars for a run against RECORDED MODEL OUTPUT. Separate from the
+#: two mode rubrics on purpose: those score the offline template drafter, which emits the corpus
+#: sentence verbatim, and their 1.00 measures the validator. These are a regression floor under
+#: a real model's measured behaviour and are not a quality target. See eval/rubrics/replay/.
+REPLAY = "replay"
 RUBRICS: tuple[str, ...] = (AGENT_ASSIST, SELF_SERVICE)
+
+#: Every rubric group on disk, which is the two modes plus REPLAY. Separate from RUBRICS because
+#: RUBRICS is the set of runs the gate REPORTS, and `replay` is not a run: it is the alternative
+#: bars two of those metrics take when the drafter is a recorded model. Loaded all the same, so
+#: a bar in that group cannot be a file nothing reads.
+RUBRIC_GROUPS: tuple[str, ...] = (AGENT_ASSIST, SELF_SERVICE, REPLAY)
 
 #: The scenarios each rubric scores. One directory tree, filtered by the `mode:` each file
 #: declares, so a reviewer adds a market or a vertical by adding a file rather than by editing
@@ -90,7 +102,7 @@ def load_thresholds_from_rubrics(root: Path = _RUBRICS) -> dict[str, dict[str, f
         raise SystemExit(f"{root}: no rubric directory, so no metric has a reviewed threshold")
 
     thresholds: dict[str, dict[str, float]] = {}
-    for rubric in RUBRICS:
+    for rubric in RUBRIC_GROUPS:
         directory = root / rubric
         if not directory.is_dir():
             raise SystemExit(f"{directory}: rubric {rubric!r} has no thresholds")
@@ -127,6 +139,35 @@ def load_thresholds_from_rubrics(root: Path = _RUBRICS) -> dict[str, dict[str, f
 #: because a customer-facing gate that is right most of the time is worse than no gate: it is
 #: trusted. The reasoning for every bar lives beside it in ``eval/rubrics/``.
 THRESHOLDS: dict[str, dict[str, float]] = load_thresholds_from_rubrics()
+
+#: The metrics whose bar MOVES when the drafter is a recorded model rather than the offline
+#: template. Only these two: everything else in both rubrics scores a deterministic engine that
+#: the drafter cannot reach, and moving those bars would be quietly excusing a real regression
+#: under cover of the model swap.
+_REPLAY_SCOPED: tuple[str, ...] = ("groundedness", "citation_accuracy")
+
+
+def _is_replay(settings: Settings | None) -> bool:
+    """Is this run scoring recorded model output rather than the offline template drafter?"""
+    if settings is None:
+        return False
+    binding = settings.adapters.get("generation", {}).get("local", "")
+    return "replay_generation" in binding
+
+
+def _bars_for(rubric: str, settings: Settings | None) -> dict[str, float]:
+    """The bars this run is held to, which depend on WHOSE words are being scored.
+
+    A template quoter and a model are not the same thing being measured, and holding them to one
+    number would either excuse the template or condemn the model for phrasing a fact its own way.
+    Only the two metrics a drafter can affect move; the rest are the engine's and do not.
+    """
+    bars = dict(THRESHOLDS[rubric])
+    if _is_replay(settings):
+        replay = THRESHOLDS.get(REPLAY, {})
+        bars.update({metric: replay[metric] for metric in _REPLAY_SCOPED if metric in replay})
+    return bars
+
 
 #: The registered model-quality-gate metric bundle PER MODE. Two bundles, because two promotions.
 BUNDLES: dict[str, str] = {
@@ -523,7 +564,7 @@ def run_agent_assist(dataset: Path, settings: Settings | None = None) -> EvalRep
     )
 
     _DETAIL[AGENT_ASSIST] = detail
-    thresholds = THRESHOLDS[AGENT_ASSIST]
+    thresholds = _bars_for(AGENT_ASSIST, resolved)
     return EvalReport(
         dataset=str(dataset),
         **_evidence(AGENT_ASSIST, dataset, cases),
@@ -804,7 +845,7 @@ def run_self_service(dataset: Path, settings: Settings | None = None) -> EvalRep
     )
 
     _DETAIL[SELF_SERVICE] = detail
-    thresholds = THRESHOLDS[SELF_SERVICE]
+    thresholds = _bars_for(SELF_SERVICE, resolved)
     return EvalReport(
         dataset=str(dataset),
         **_evidence(SELF_SERVICE, dataset, cases),

@@ -61,6 +61,17 @@ class VertexGenerationAdapter:
                 response_schema=_SCHEMA,
                 temperature=0.0,
                 max_output_tokens=512,
+                # Thinking OFF, and this line is load-bearing. The configured model spends
+                # output tokens on reasoning before it answers, so with thinking on the JSON was
+                # truncated at the 512-token bound on EVERY request, `response.parsed` came back
+                # None, and `draft` returned None. The kernel treats any generation failure as
+                # silence, deliberately, so this adapter produced no suggestion for any contact
+                # on the managed profile and nothing said why. Found by recording real model
+                # output for the replay corpus, which is the first time a real model was in this
+                # path at all. The bound stays: the drafter's whole job is one short grounded
+                # sentence, and a drafter that needs to reason at length about which passage to
+                # quote is answering a different question from the one it was asked.
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
             ),
         )
         parsed = getattr(response, "parsed", None)

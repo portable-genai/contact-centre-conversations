@@ -58,6 +58,11 @@ test-integration:
 eval:
 	$(PYRUN) eval/run_eval.py
 	$(PYRUN) eval/run_narrative_eval.py
+	# The same rubrics and the same hand-written labels, over the RECORDED words of a real
+	# model. Offline: the recording is committed and the replay adapter reaches no network and
+	# raises on a missing key rather than falling back. Two bars move for this run and only two,
+	# because only two of these metrics measure the drafter at all; see eval/rubrics/replay/.
+	$(PYRUN) eval/run_eval.py --drafter replay-gemini
 
 # The full OFFLINE gate. It is deliberately network-free, so it runs on a plane and in a
 # no-egress environment; the dependency audit needs a vulnerability feed and therefore lives in

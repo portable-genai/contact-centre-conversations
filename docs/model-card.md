@@ -96,7 +96,24 @@ got better fails too: a band nobody predicted is a change nobody reviewed.
 
 **What the scores are, and are not.** Every deterministic metric scores the offline template
 drafter, so `citation_accuracy` and `groundedness` measure the VALIDATOR rather than a model's
-restraint: the template quoter structurally cannot invent a figure. Model quality is assessed in
+restraint: the template quoter structurally cannot invent a figure. That was stated here for
+some time and, from 2026-09-10, it is MEASURED. `eval/datasets/gemini_replay.jsonl` holds 32
+replies recorded from `gemini-3.5-flash` over the same scenarios, and
+`eval/run_eval.py --drafter replay-gemini` scores the same rubrics and the same labels against
+them inside `make gate`. Same corpus, same labels, only the drafter changed: `groundedness`
+falls from 1.000 to **0.500** and `citation_accuracy` from 1.000 to **0.833**. Two causes, and
+`docs/evals.md` carries both: the model returns an empty draft on some turns, and the fact check
+requires the canonical phrasing so a correct paraphrase scores zero. Neither is repaired by
+moving a bar; `eval/rubrics/replay/` holds a regression floor under the measured baseline and
+says in terms that it is not a quality target.
+
+**The recording also found the managed drafter dead.** `VertexGenerationAdapter` capped output
+at 512 tokens and the configured model spends output tokens reasoning before it answers, so the
+JSON was truncated on every request, `response.parsed` came back None, and `draft` returned
+None. The kernel treats any generation failure as silence, so this service would have produced
+no suggestion for any contact on the managed profile and nothing would have said why. Fixed with
+a zero thinking budget. No offline metric could have found it, because until now no offline
+metric had a model in it. Model quality is assessed in
 the judged half, and it grades recorded text rather than a live call. Two bands there were
 predicted wrong and the table said so: for a simple factual answer the template drafter is not
 degraded, because quoting the passage supplies exactly the reference points and the citation the
