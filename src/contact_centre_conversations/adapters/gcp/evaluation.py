@@ -15,11 +15,19 @@ from agent_eval_kit import EvalReport, PromotionGateClient
 from hex_service_kit.netdefaults import ConfiguredEmptyError, read_env_setting
 
 from ...config import Settings
+from ...domain.modes import ModeConfigurationError
 
-#: Bundle name model-quality-gate selects this repo's registered metric set by. A rendered value, so
-#: it lives
-#: in a module constant: inline it would make the line length depend on the project slug.
-_BUNDLE = "contact-centre-conversations"
+# There is deliberately no bundle constant in this file. Each mode's promotion bundle is
+# already resolved into its own ``ModeGate.promotion_bundle`` from the settings block, and that
+# is the one home for it: a constant here would be a second, and the two would diverge the first
+# time a deployment renamed a bundle.
+#
+# What used to be here was `_BUNDLE = "contact-centre-conversations"`, the bare repository name,
+# which the authority does not register at all: it registers the two mode-scoped bundles and no
+# blended third, because one bundle would let a strong agent-assist result carry a weak
+# customer-facing one over the line. Every promotion request from this adapter would therefore
+# have failed closed on `UnknownMetricError`. Nothing reported it, because the offline smoke
+# gate never touches this path.
 _QUALITY_URL_ENV = "CONTACT_QUALITY_URL"
 _DEFAULT_QUALITY_URL = "http://localhost:8084"
 #: The model the verdict is recorded AGAINST. model-quality-gate keys a promotion to the exact model
@@ -36,6 +44,39 @@ class ManagedEvalGateAdapter:
         self._settings = settings
         self._client: PromotionGateClient | None = None
 
+    def _bundle(self) -> str:
+        """The registered bundle for the ONE mode this deployment serves, or refuse.
+
+        A deployment that enables both modes has TWO promotions, not one, and this port has a
+        single ``evaluate(dataset_path)`` with no mode in the signature. Guessing would mean
+        letting a strong agent-assist result carry a weak customer-facing one over the line,
+        which is the exact thing gating the modes apart exists to prevent. So it refuses, by
+        name, and points at the runner that already asks per rubric.
+        """
+        modes = self._settings.modes
+        enabled = modes.enabled_modes
+        if not enabled:
+            raise ModeConfigurationError(
+                "no contact mode is enabled, so there is no promotion to ask about; a verdict "
+                "over no enabled mode would certify nothing"
+            )
+        if len(enabled) > 1:
+            names = ", ".join(modes.gate(mode).promotion_bundle or mode.value for mode in enabled)
+            raise ModeConfigurationError(
+                "both contact modes are enabled, so this deployment has TWO promotions and this "
+                f"port carries one bundle. Ask per rubric with `python eval/run_eval.py --mode "
+                f"gate`, which sends {names} separately. A single blended verdict would let a "
+                "strong agent-assist result carry a weak customer-facing one."
+            )
+        bundle = modes.gate(enabled[0]).promotion_bundle
+        if not bundle:
+            raise ModeConfigurationError(
+                f"mode {enabled[0].value!r} is enabled with no promotion_bundle, so there is no "
+                "registered metric set to ask the authority for. Name the bundle whose rubric "
+                "set authorised this mode."
+            )
+        return bundle
+
     def _gate_client(self) -> PromotionGateClient:
         if self._client is None:
             # Three states, because this names WHERE the promotion authority is. Unset takes the
@@ -49,7 +90,7 @@ class ManagedEvalGateAdapter:
                     f"service URL."
                 )
             url = setting.value or _DEFAULT_QUALITY_URL
-            self._client = PromotionGateClient(url, bundle=_BUNDLE, model=_GATED_MODEL)
+            self._client = PromotionGateClient(url, bundle=self._bundle(), model=_GATED_MODEL)
         return self._client
 
     def evaluate(self, dataset_path: str) -> EvalReport:

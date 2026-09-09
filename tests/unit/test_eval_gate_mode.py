@@ -259,3 +259,74 @@ def test_a_server_error_is_not_read_as_a_negative_verdict(
     respx.post(f"{_LOOPBACK}/v1/evaluations").mock(return_value=httpx.Response(503, text="down"))
     with pytest.raises(GateClientError, match="503"):
         run_eval.run_gate(run_eval.SELF_SERVICE, run_eval.DATASETS[run_eval.SELF_SERVICE])
+
+
+# --------------------------------------------------------------------------- #
+# The managed port names a REGISTERED, mode-scoped bundle, or refuses
+# --------------------------------------------------------------------------- #
+def _managed_adapter(modes):
+    """The managed gate adapter over settings carrying ``modes``, with no HTTP performed."""
+    import dataclasses
+
+    from contact_centre_conversations.adapters.gcp.evaluation import ManagedEvalGateAdapter
+    from contact_centre_conversations.config import Settings
+
+    return ManagedEvalGateAdapter(dataclasses.replace(Settings.load(), modes=modes))
+
+
+def test_the_managed_port_sends_the_enabled_mode_s_own_bundle() -> None:
+    """One enabled mode resolves to that mode's registered bundle, read from its own gate.
+
+    The constant that used to live in the adapter was the bare repository name, which the
+    promotion authority does not register: it registers the two mode-scoped bundles and no
+    blended third. Every promotion request from this port would have failed closed on
+    UnknownMetricError, and nothing reported it because the offline smoke gate never reaches
+    this path.
+    """
+    from contact_centre_conversations.domain.modes import ContactMode, ModeGate, ModeGates
+
+    only_customer_facing = ModeGates(
+        agent_assist=ModeGate(mode=ContactMode.AGENT_ASSIST, enabled=False),
+        self_service=ModeGate(
+            mode=ContactMode.SELF_SERVICE,
+            enabled=True,
+            promotion_bundle="contact-centre-conversations-self-service",
+        ),
+    )
+    adapter = _managed_adapter(only_customer_facing)
+    assert adapter._bundle() == "contact-centre-conversations-self-service"
+
+
+def test_the_managed_port_refuses_to_blend_two_promotions() -> None:
+    """Both modes on means two promotions, and this port carries one bundle. It refuses."""
+    from contact_centre_conversations.domain.modes import ModeConfigurationError, ModeGates
+
+    adapter = _managed_adapter(ModeGates.both_on())
+    with pytest.raises(ModeConfigurationError, match="TWO promotions"):
+        adapter._bundle()
+
+
+def test_the_managed_port_refuses_when_no_mode_is_enabled() -> None:
+    """A verdict over no enabled mode would certify nothing, so there is no verdict to ask for."""
+    from contact_centre_conversations.domain.modes import ModeConfigurationError, ModeGates
+
+    adapter = _managed_adapter(ModeGates.all_off())
+    with pytest.raises(ModeConfigurationError, match="no contact mode is enabled"):
+        adapter._bundle()
+
+
+def test_the_managed_port_refuses_an_enabled_mode_with_no_bundle() -> None:
+    """Enabled with no bundle means no registered metric set to ask the authority for."""
+    from contact_centre_conversations.domain.modes import (
+        ContactMode,
+        ModeConfigurationError,
+        ModeGate,
+        ModeGates,
+    )
+
+    unevidenced = ModeGates(
+        agent_assist=ModeGate(mode=ContactMode.AGENT_ASSIST, enabled=True, promotion_bundle=""),
+    )
+    adapter = _managed_adapter(unevidenced)
+    with pytest.raises(ModeConfigurationError, match="no promotion_bundle"):
+        adapter._bundle()
