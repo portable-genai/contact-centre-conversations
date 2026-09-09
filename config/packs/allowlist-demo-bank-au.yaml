@@ -1,0 +1,51 @@
+# Self-service allowlist: tenant demo-bank (FICTIONAL), market AU.
+#
+# The intent set matches SG's; the CUE pack is where AU differs, because hardship has a
+# statutory shape here that it does not have in the other two markets. See cues-au.yaml.
+#
+# TWO allowlists, deliberately separate. `intents` is what the assistant may HANDLE; `actions`
+# is what it may TAKE. Either being empty refuses everything, checked before anything else.
+kind: allowlist
+tenant: demo-bank
+market: AU
+vertical: retail_banking
+locale: en-AU
+confidence_floor: 0.6
+
+intents:
+  - intent_id: card_balance
+    title: Tell the customer their card balance
+    phrases:
+      - what is my card balance
+      - card balance
+      - how much is on my card
+    actions: [read_card_balance]
+  - intent_id: recent_transactions
+    title: List recent transactions
+    phrases:
+      - recent transactions
+      - my last transactions
+      - what did i spend
+    actions: [read_recent_transactions]
+  - intent_id: report_lost_card
+    title: Take a lost-card report
+    confidence_floor: 0.8
+    phrases:
+      - i lost my card
+      - my card is missing
+      - report my card lost
+    actions: [block_card]
+  - intent_id: dispute_transaction
+    title: Take a disputed transaction
+    confidence_floor: 0.8
+    phrases:
+      - dispute a transaction
+      - i did not make this transaction
+      - unauthorised transaction
+    actions: [raise_chargeback]
+
+actions:
+  - read_card_balance
+  - read_recent_transactions
+  - block_card
+  - raise_chargeback

@@ -1,0 +1,31 @@
+# Cue pack: Hong Kong retail banking (FICTIONAL policy).
+#
+# Two customer-side phrase lists the deterministic handoff triggers read. They are policy: a
+# bank decides what counts as a vulnerability cue in its market. Matching is exact-phrase, so a
+# paraphrase nobody listed does NOT match: these lists are a floor and never a claim of
+# complete coverage.
+#
+# What differs from SG, and why the difference is the reason this pack exists rather than a
+# copy: an HK contact centre serves customers who switch between English and Cantonese mid
+# sentence, so the vulnerability list carries both, and a customer who says the Cantonese phrase
+# in an otherwise English contact is handed off exactly as one who says the English phrase.
+kind: cues
+pack_id: hk-customer-cues-v1
+market: HK
+vertical: retail_banking
+locale: en-HK
+
+escalation:
+  - speak to a person
+  - speak to a human
+  - talk to someone
+  - put me through to an agent
+  - 我要同真人講
+
+vulnerability:
+  - i am struggling to pay
+  - i cannot afford
+  - i have been scammed
+  - someone is forcing me
+  - 我畀人呃咗
+  - 我還唔到錢

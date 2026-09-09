@@ -107,9 +107,15 @@ in the dataset, and degradation appears where a reply must do more than quote.
 Changing judges means recalibrating the table in the same commit, because a score is only
 meaningful against the judge that produced it.
 
-**Scored over** two verticals (retail banking, general insurance) and two markets (SG, JP),
-customer-facing scenarios multi-turn. The voice path carries no scenarios: word error rate per
-locale and per channel needs audio corpora and is a named follow-up, not an omission.
+**Scored over** two verticals (retail banking, general insurance) and four markets (SG, JP, HK,
+AU), customer-facing scenarios multi-turn. HK and AU were added on 2026-09-10 and closed a real
+hole rather than adding breadth: the PII pattern set has always covered four jurisdictions and
+`adapters/_review_payload.py` scrubs against every jurisdiction's rows on every contact, so the
+HKID and TFN rows were live in SG and JP contacts and exercised by nothing at all.
+`customer_pii_safety` was scoring two markets' patterns and reporting a number that read as
+though it covered four. Agent assist is still SG banking only, and the voice path still carries
+no scenarios: word error rate per locale and per channel needs audio corpora and is a named
+follow-up, not an omission.
 
 ## Remaining controls (TODO, repo owner)
 

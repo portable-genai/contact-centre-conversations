@@ -89,6 +89,8 @@ against the pipeline's own verdict is a tautology with a threshold.
 | agent_assist | retail_banking | SG | 6 |
 | self_service | general_insurance | JP | 4 |
 | self_service | general_insurance | SG | 12 |
+| self_service | retail_banking | AU | 4 |
+| self_service | retail_banking | HK | 5 |
 | self_service | retail_banking | JP | 6 |
 | self_service | retail_banking | SG | 17 |
 
@@ -98,17 +100,18 @@ against the pipeline's own verdict is a tautology with a threshold.
 | agent_assist | `cross_market` | 1 |
 | agent_assist | `missed_disclosure` | 1 |
 | agent_assist | `silent_retrieval` | 1 |
-| self_service | `benign` | 12 |
+| self_service | `benign` | 14 |
 | self_service | `cross_party` | 4 |
 | self_service | `cross_tenant` | 1 |
 | self_service | `handoff_jailbreak` | 1 |
-| self_service | `high_stakes` | 6 |
+| self_service | `high_stakes` | 8 |
 | self_service | `injection_direct` | 1 |
 | self_service | `injection_multilingual` | 1 |
 | self_service | `injection_obfuscated` | 1 |
-| self_service | `out_of_scope` | 6 |
+| self_service | `out_of_scope` | 7 |
+| self_service | `pii` | 2 |
 | self_service | `repeated_failure` | 1 |
-| self_service | `vulnerability` | 5 |
+| self_service | `vulnerability` | 7 |
 
 ## Where the quality bars come from
 
@@ -145,6 +148,44 @@ in which any draft had no recording fails whole, whatever the metrics said, beca
 deliberately degrades a generation failure to silence and silence is scoreable; the console names
 the missing recordings and the command that re-records them.
 
+## What the HK and AU markets found
+
+The PII pattern set covers four jurisdictions. `adapters/_review_payload.py` scrubs against
+EVERY jurisdiction's rows on every contact, so the HKID and TFN patterns were live in SG and JP
+contacts and exercised by nothing: `customer_pii_safety` was scoring two markets' patterns and
+reporting a number that read as though it covered four. `ss-hk-pii-in-turn` and
+`ss-au-pii-in-turn` are the cases that change that, each planting its market's own identifier
+mid sentence, which is how a customer actually volunteers one.
+
+Three things the two new markets settled that a copy of SG's fixtures would not have:
+
+**A market's allowlist is a decision, and HK's is narrower.** HK ships no chargeback intent, so
+`ss-hk-dispute-not-automated-here` is refused by the allowlist and handed to a person, while the
+same words in `ss-au-dispute` are handled and routed for maker-checker. Two files, one
+difference, and it is the whole argument for per-market packs rather than a global one with
+exceptions.
+
+**A cue pack is policy, and it is not translatable.** `cues-hk.yaml` carries Cantonese
+vulnerability phrases because an HK contact centre serves customers who switch language mid
+sentence. `cues-au.yaml` carries hardship phrases because in that market the words start a
+defined process with an obligation attached. Neither list can be derived from the other, and
+neither is something a model should be inferring.
+
+**A finding, recorded rather than fixed here.** `ss-au-hardship` is the first scenario anywhere
+in this corpus that pairs a vulnerability cue WITH an allowlisted action in the same turn. The
+service raises the vulnerability handoff and executes the balance read: the handoff and the gate
+are computed independently, and the gate's reason list does not mention the cue at all. Every
+existing vulnerability scenario pairs the cue with no requested action, so the combination had
+never been scored.
+
+The scenario is labelled with what the service does, not with what anyone had decided it should
+do. Whether a hardship cue should suppress an otherwise-allowed read is a conduct decision: the
+argument for the current behaviour is that a balance is low stakes and refusing it adds friction
+to a contact already going to a person; the argument against is that this market attaches an
+obligation to those words, and a bot answering the literal question first is the shape of
+failing someone at the moment it mattered. An eval that quietly relabelled it would have removed
+the question rather than answered it.
+
 ## What is not measured
 
 Named, rather than left to be discovered:
@@ -156,7 +197,12 @@ Named, rather than left to be discovered:
 - **A real model.** Every metric scores the offline template drafter, so the citation and
   grounding metrics currently measure the validator rather than a model's restraint. The judged
   half is where model quality is assessed, and it grades recorded text rather than a live call.
-- **HK and AU.** The PII patterns cover four jurisdictions and the scenarios exercise two.
+  `eval/replay_generation.py` is the path that would close this and it needs
+  `eval/datasets/gemini_replay.jsonl`, which is not committed: producing it means running
+  `scripts/record_gemini_fixtures.py` against the managed profile with real credentials, which
+  is an authoring step a person takes deliberately. Until then the replay path exists, refuses
+  loudly on a missing recording, and is not exercised by the gate. That is the single largest
+  honest gap in this suite and it is unchanged by this round of work.
 - **Agent assist beyond SG banking.** The whisper panel's scenarios cover one vertical in one
   market; JP and the insurance vertical are exercised only on the customer-facing mode. The
   packs and corpus for those combinations exist, so this is authoring work, not product work.

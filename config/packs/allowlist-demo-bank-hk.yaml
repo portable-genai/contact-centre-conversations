@@ -1,0 +1,45 @@
+# Self-service allowlist: tenant demo-bank (FICTIONAL), market HK.
+#
+# Deliberately NARROWER than the SG allowlist, and that is the point of having it. HK ships no
+# chargeback intent here, so a disputed-transaction contact in this market has no path to an
+# action and is refused by the allowlist rather than handled worse. A market's allowlist is the
+# bank's decision about what it is willing to automate there, and a copy of another market's
+# list would say the decision was never made.
+#
+# TWO allowlists, deliberately separate. `intents` is what the assistant may HANDLE; `actions`
+# is what it may TAKE. Either being empty refuses everything, checked before anything else.
+kind: allowlist
+tenant: demo-bank
+market: HK
+vertical: retail_banking
+locale: en-HK
+confidence_floor: 0.6
+
+intents:
+  - intent_id: card_balance
+    title: Tell the customer their card balance
+    phrases:
+      - what is my card balance
+      - card balance
+      - how much is on my card
+    actions: [read_card_balance]
+  - intent_id: recent_transactions
+    title: List recent transactions
+    phrases:
+      - recent transactions
+      - my last transactions
+      - what did i spend
+    actions: [read_recent_transactions]
+  - intent_id: report_lost_card
+    title: Take a lost-card report
+    confidence_floor: 0.8
+    phrases:
+      - i lost my card
+      - my card is missing
+      - report my card lost
+    actions: [block_card]
+
+actions:
+  - read_card_balance
+  - read_recent_transactions
+  - block_card
