@@ -12,6 +12,7 @@ command calls is called from the offline gate, so a stale page fails the build.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -49,7 +50,13 @@ def test_the_check_actually_fails_on_a_stale_page(
     """
     stale = tmp_path / "evals.md"
     published = doc.DOC.read_text(encoding="utf-8")
-    stale.write_text(published.replace("| 0.99 |", "| 0.10 |"), encoding="utf-8")
+    # The bar to corrupt is FOUND rather than named. This used to substitute a literal "0.99",
+    # and when every safety bar moved to 1.0 the substitution matched nothing, the copy was
+    # identical to the published page, and the check passed: the test that watches the check go
+    # red had quietly stopped making it go red.
+    doctored = re.sub(r"\| ([0-9]*\.?[0-9]+) \|", "| 0.10 |", published, count=1)
+    assert doctored != published, "no bar cell was found to corrupt, so nothing was checked"
+    stale.write_text(doctored, encoding="utf-8")
     monkeypatch.setattr(doc, "DOC", stale)
     assert doc.main(["--check"]) == 1
 
