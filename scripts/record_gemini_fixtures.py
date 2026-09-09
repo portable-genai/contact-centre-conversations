@@ -24,8 +24,8 @@ that is asserted here too rather than assumed.
 
 from __future__ import annotations
 
-import dataclasses
 import hashlib
+import importlib
 import json
 import sys
 from datetime import UTC, datetime
@@ -40,6 +40,7 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 
 import eval_schema  # noqa: E402
 import replay_generation  # noqa: E402
+import run_eval  # noqa: E402
 from speech_lexicon_kit import ChannelRole  # noqa: E402
 
 from contact_centre_conversations.config import Settings, build_container  # noqa: E402
@@ -47,12 +48,25 @@ from contact_centre_conversations.domain.models import (  # noqa: E402
     ContactRef,
     TurnSubmission,
 )
-from contact_centre_conversations.domain.modes import ContactMode, ModeGates  # noqa: E402
+from contact_centre_conversations.domain.modes import ContactMode  # noqa: E402
 from contact_centre_conversations.domain.pii import PII_PATTERNS  # noqa: E402
 from contact_centre_conversations.domain.suggestions import MAX_SUGGESTION_CHARS  # noqa: E402
 from contact_centre_conversations.services import build_services  # noqa: E402
 
 SCENARIOS = _REPO_ROOT / "eval" / "scenarios"
+
+
+def _managed_generation(managed: Settings) -> Any:
+    """The REAL managed generation adapter, built alone rather than through a container.
+
+    Building the whole managed container needs every other managed dependency to exist, and the
+    first one it reaches is a Firestore database. None of them has anything to do with capturing
+    what a model wrote.
+    """
+    module_name, _, class_name = managed.adapters["generation"]["gcp"].partition(":")
+    module = importlib.import_module(module_name)
+    return getattr(module, class_name)(managed)
+
 
 #: The recording's clock, pinned to the SAME instant the eval scores at (``run_eval._AS_OF``),
 #: so the disclosure windows the model saw while being recorded are the ones the replay scores.
@@ -89,24 +103,26 @@ def _scrub(rows: list[dict[str, Any]], planted: set[str]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    settings = Settings.load()
-    if settings.profile != "gcp":
+    managed = Settings.load()
+    if managed.profile != "gcp":
         print(
-            f"refused: recording needs the managed profile (got {settings.profile!r}). "
+            f"refused: recording needs the managed profile (got {managed.profile!r}). "
             "This step makes real model calls; the eval that replays them does not.",
             file=sys.stderr,
         )
         return 2
 
-    # ``Settings`` is a frozen slots dataclass, so field-by-field copies go through
-    # ``dataclasses.replace`` rather than ``__dict__``, which a slots instance does not have.
-    container = build_container(
-        dataclasses.replace(settings, modes=ModeGates.both_on())
-        if not (settings.modes.agent_assist.enabled and settings.modes.self_service.enabled)
-        else settings
-    )
+    # The container is the EVAL's, not the managed profile's, and that is the whole subtlety of
+    # this script. A recording is keyed on `recording_key(model, prompt, passages)`, and the
+    # prompts the replay will present are the ones `eval/run_eval.py` builds: it swaps the
+    # generation adapter and leaves every other port on the offline profile. Recording against
+    # the managed container would have captured managed-retrieval prompts, whose keys the replay
+    # can never produce, so every draft would have MISSED and the run would have failed naming a
+    # stale recording that was in fact a recording of something else. Only the GENERATION call
+    # is managed here: same inputs the eval will replay, a real model's words for the answer.
+    container = build_container(run_eval.eval_settings())
     built = build_services(container)
-    generation = container.generation
+    generation = _managed_generation(managed)
     # The REAL adapter's bound method, captured BEFORE the wrapper below is assigned over the
     # instance attribute. The wrapper must call this, never ``generation.draft``, which after
     # the assignment IS the wrapper and would recurse into itself instead of reaching a model.
@@ -119,9 +135,9 @@ def main(argv: list[str] | None = None) -> int:
         response = real_draft(prompt, passages)
         captured.append(
             {
-                "key": replay_generation.recording_key(settings.model, prompt, passages),
+                "key": replay_generation.recording_key(managed.model, prompt, passages),
                 "case_id": case_id,
-                "model": settings.model,
+                "model": managed.model,
                 "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
                 "passage_ids": sorted(p.citation.source_id for p in passages),
                 "response": response,
@@ -148,7 +164,7 @@ def main(argv: list[str] | None = None) -> int:
                 lambda prompt, passages, _case=case["id"]: _capturing_draft(
                     prompt, passages, case_id=_case
                 )
-            )
+            )  # the OFFLINE adapter's method, replaced so the managed one answers instead
             for index, turn in enumerate(case["turns"]):
                 submission = TurnSubmission(
                     contact=contact,

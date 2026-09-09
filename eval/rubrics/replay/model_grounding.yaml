@@ -1,0 +1,79 @@
+# The bars for a run against a REAL model's recorded words, and the reason they are not 1.00.
+#
+# Read this beside eval/rubrics/agent_assist/, and do not confuse the two. Those bars are 1.00
+# and they score the offline template drafter, which is a template quoter: it emits the corpus
+# sentence verbatim and structurally cannot invent a figure. A 1.00 there measures the
+# VALIDATOR, which this repository's model card has said plainly for some time and which was
+# never demonstrated because no model had been in the measured path.
+#
+# It has now. `scripts/record_gemini_fixtures.py` captured 32 replies from gemini-3.5-flash over
+# the same scenarios, and `eval/run_eval.py --drafter replay-gemini` scores the same rubrics and
+# the same hand-written labels against them. The result:
+#
+#     groundedness       1.000 (template)  ->  0.500 (recorded model)
+#     citation_accuracy  1.000 (template)  ->  0.833 (recorded model)
+#
+# TWO causes, and they are different in kind. Both are recorded here rather than repaired,
+# because a bar tuned until the number looks acceptable measures nothing.
+#
+# 1. THE MODEL RETURNS AN EMPTY DRAFT on some turns where the template always produced one.
+#    That is a real capability gap and the metric catches it correctly. It is also the failure
+#    that matters most in this product: the kernel treats any generation failure as silence, so
+#    an empty draft reaches the agent as no suggestion at all.
+#
+# 2. THE FACT CHECK REQUIRES THE CANONICAL PHRASING. The label says "Calls are recorded for
+#    quality and training"; the model wrote "we record our calls for quality and training
+#    purposes". That is the same fact and the check scores it 0. Against a template that emits
+#    the corpus sentence verbatim, the check could never fail; against a model, it is a
+#    PHRASING check wearing a groundedness name. It is not loosened here, because loosening a
+#    strict check into a fuzzy one replaces a measurement with a judgement, and this repository
+#    already has a place for judgements: eval/run_narrative_eval.py, judged against owned floors.
+#
+# So these bars are a REGRESSION FLOOR on a path that is not fit to serve, and they must never
+# be read as a quality target. What they buy is that the gap is in the gate output on every run
+# instead of in a document, and that a prompt change making the model WORSE fails the build.
+# Raising them is the work; the two causes above say what that work is.
+metric: groundedness
+threshold: 0.50
+direction: maximize
+applies_to:
+  - EvalReport.results[groundedness] when --drafter replay-gemini
+description: >-
+  Share of agent-assist cases whose suggestion carries the expected grounded fact, scored against
+  the RECORDED words of gemini-3.5-flash rather than against the offline template drafter.
+denominator: >-
+  6 agent-assist cases, scored 0/1. At 6 cases the loosest bar tolerating one failure is 0.83, so
+  this bar tolerates three, which is exactly what it is measuring: three of six is where the
+  recorded model landed and the bar is the floor under that, not an appetite for it.
+rationale: >-
+  A measured baseline, taken when the recording was made, on a path this repository does not
+  serve from. Not a quality bar. The number a reviewer should act on is the 0.500 itself and the
+  two causes above it, not the fact that the run passes.
+
+criteria:
+  - id: fact_in_reply
+    description: >-
+      Every expected fact appears in the model's own reply. This is where the recorded model
+      loses half the cases, and the two reasons are an empty draft and a correct paraphrase the
+      matcher does not accept.
+    weight: 0.5
+  - id: fact_in_corpus
+    description: >-
+      Every expected fact also appears in the source corpus, checked independently of what the
+      model cited. Unchanged by the drafter swap: the corpus is the corpus.
+    weight: 0.5
+
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+companion_metrics:
+  citation_accuracy:
+    threshold: 0.83
+    description: >-
+      Share of cases citing only sources in the corpus AND every source the label expects,
+      against the recorded model's words.
+    rationale: >-
+      0.833 measured, one case of six failing, and that case is the empty draft: it cited
+      nothing, so it could not cite what was expected. The same floor logic applies. It is
+      higher than groundedness because the model that DOES answer cites correctly, which is the
+      one encouraging thing in this table.

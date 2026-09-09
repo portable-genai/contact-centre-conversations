@@ -78,7 +78,7 @@ def test_a_missing_rubric_directory_is_refused(tmp_path: Path) -> None:
 
 
 def test_a_rubric_with_no_thresholds_gates_nothing_and_is_refused(tmp_path: Path) -> None:
-    for rubric in run_eval.RUBRICS:
+    for rubric in run_eval.RUBRIC_GROUPS:
         (tmp_path / rubric).mkdir(parents=True)
     with pytest.raises(SystemExit, match="no metric has a threshold"):
         run_eval.load_thresholds_from_rubrics(tmp_path)
@@ -86,7 +86,7 @@ def test_a_rubric_with_no_thresholds_gates_nothing_and_is_refused(tmp_path: Path
 
 def test_a_non_numeric_threshold_is_refused_rather_than_coerced(tmp_path: Path) -> None:
     """ "1.0" is a string, and a bar that had to be coerced was not reviewed as a number."""
-    for rubric in run_eval.RUBRICS:
+    for rubric in run_eval.RUBRIC_GROUPS:
         (tmp_path / rubric).mkdir(parents=True)
         (tmp_path / rubric / "m.yaml").write_text("metric: m\nthreshold: high\n", encoding="utf-8")
     with pytest.raises(SystemExit, match="non-numeric threshold"):
@@ -95,7 +95,7 @@ def test_a_non_numeric_threshold_is_refused_rather_than_coerced(tmp_path: Path) 
 
 def test_one_metric_given_two_different_bars_is_refused(tmp_path: Path) -> None:
     """The whole point of one home: two files disagreeing must not resolve by sort order."""
-    for rubric in run_eval.RUBRICS:
+    for rubric in run_eval.RUBRIC_GROUPS:
         (tmp_path / rubric).mkdir(parents=True)
         (tmp_path / rubric / "a.yaml").write_text("metric: m\nthreshold: 1.0\n", encoding="utf-8")
         (tmp_path / rubric / "b.yaml").write_text("metric: m\nthreshold: 0.5\n", encoding="utf-8")
@@ -104,7 +104,7 @@ def test_one_metric_given_two_different_bars_is_refused(tmp_path: Path) -> None:
 
 
 def test_a_rubric_naming_no_metric_is_refused(tmp_path: Path) -> None:
-    for rubric in run_eval.RUBRICS:
+    for rubric in run_eval.RUBRIC_GROUPS:
         (tmp_path / rubric).mkdir(parents=True)
         (tmp_path / rubric / "m.yaml").write_text("threshold: 1.0\n", encoding="utf-8")
     with pytest.raises(SystemExit, match="names no metric"):
@@ -113,7 +113,7 @@ def test_a_rubric_naming_no_metric_is_refused(tmp_path: Path) -> None:
 
 def test_companion_metrics_are_thresholds_too(tmp_path: Path) -> None:
     """They group metrics a reader should consider together; they are not decoration."""
-    for rubric in run_eval.RUBRICS:
+    for rubric in run_eval.RUBRIC_GROUPS:
         (tmp_path / rubric).mkdir(parents=True)
         (tmp_path / rubric / "m.yaml").write_text(
             "metric: headline\nthreshold: 1.0\n"

@@ -135,11 +135,43 @@ def test_a_stale_recording_fails_the_run_even_where_the_metrics_would_pass(
     assert "record_gemini_fixtures.py" in out
 
 
-def test_the_runner_refuses_the_replay_drafter_without_a_recording() -> None:
-    """The shipped state: no recording is committed, so the flag says how to make one."""
-    assert not replay_generation.FIXTURE.exists(), (
-        "a recording is committed; update this test to assert it is used instead"
+def test_the_committed_recording_is_real_model_output_and_is_actually_used() -> None:
+    """The shipped state changed on 2026-09-10: a recording IS committed, so this asserts it.
+
+    What it holds is the property the file is FOR. A recording of nulls would satisfy every
+    structural check and score nothing, and that is not hypothetical: the first run of the
+    recorder produced 32 rows of `"response": null`, because the managed adapter capped output
+    at 512 tokens on a model that spends tokens thinking, so the JSON was truncated on every
+    request and `response.parsed` came back None. The kernel treats a generation failure as
+    silence, so the whole batch looked like a model that declined everything.
+    """
+    rows = [
+        json.loads(line)
+        for line in replay_generation.FIXTURE.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    assert rows, "the committed recording holds no rows"
+    answered = [row for row in rows if row.get("response")]
+    assert len(answered) > len(rows) // 2, (
+        f"only {len(answered)} of {len(rows)} recorded replies carry a response; a recording "
+        "of silence scores nothing and passes every structural check"
     )
+    assert {row["model"] for row in rows} == {"gemini-3.5-flash"}, (
+        "the recording names a model other than the one the settings default to, so the replay "
+        "keys cannot match what the eval builds"
+    )
+
+
+def test_the_runner_still_refuses_the_replay_drafter_when_the_recording_is_gone(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The refusal is the property, and it must survive the recording existing.
+
+    Asserted against a path that does not exist rather than by deleting the committed file,
+    because a test that removes an artifact to prove a refusal is a test that can leave the
+    tree without it.
+    """
+    monkeypatch.setattr(replay_generation, "FIXTURE", tmp_path / "not-recorded.jsonl")
     with pytest.raises(SystemExit, match="record_gemini_fixtures.py"):
         run_eval.main(["--drafter", "replay-gemini"])
 
