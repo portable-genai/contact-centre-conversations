@@ -73,6 +73,9 @@ run "the_audit_sink_names_the_log_the_application_writes" {
   variables {
     project_id    = "fictional-contact-sg"
     enable_vpc_sc = false
+    # The metric assertion below reads a resource the gate creates, so this run turns the gate
+    # on. It is the metric's DERIVATION under test, not whether a deployment asks for it.
+    posture_alerts_enabled = true
   }
 
   # adapters/gcp/audit.py names the logger as a code constant. A sink filter derived from
