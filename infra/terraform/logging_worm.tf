@@ -71,6 +71,7 @@ resource "google_logging_project_sink" "audit_to_worm" {
 # trail, and the half it is missing is the one a complaint turns on.
 # --------------------------------------------------------------------------- #
 resource "google_project_iam_audit_config" "data_access" {
+  count   = var.manage_audit_config ? 1 : 0
   project = var.project_id
   service = "allServices"
 
