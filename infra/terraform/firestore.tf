@@ -31,8 +31,11 @@ resource "google_firestore_database" "contacts" {
   location_id = var.region # in-country contacts and turns (P-03)
   type        = "FIRESTORE_NATIVE"
 
-  cmek_config {
-    kms_key_name = google_kms_crypto_key.contact.id
+  dynamic "cmek_config" {
+    for_each = var.cmek_enabled ? [1] : []
+    content {
+      kms_key_name = one(google_kms_crypto_key.contact[*].id)
+    }
   }
 
   delete_protection_state           = "DELETE_PROTECTION_ENABLED"
