@@ -35,8 +35,11 @@ resource "google_storage_bucket" "audio" {
     enabled = true
   }
 
-  encryption {
-    default_kms_key_name = google_kms_crypto_key.contact.id # CMEK (P-09)
+  dynamic "encryption" {
+    for_each = var.cmek_enabled ? [1] : []
+    content {
+      default_kms_key_name = one(google_kms_crypto_key.contact[*].id) # CMEK (P-09)
+    }
   }
 
   depends_on = [

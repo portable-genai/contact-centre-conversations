@@ -24,7 +24,7 @@ output "residency_allowlist" {
 # --------------------------------- KMS -------------------------------------- #
 output "kms_key" {
   description = "Regional CMEK crypto key id, bound to logging, Firestore, Storage, Speech, Vertex AI and Cloud Run."
-  value       = google_kms_crypto_key.contact.id
+  value       = one(google_kms_crypto_key.contact[*].id)
 }
 
 # ------------------------------- WORM logging ------------------------------- #
