@@ -24,6 +24,7 @@ from pii_kit import redact
 from speech_lexicon_kit import ChannelRole
 
 from .. import services
+from ..adapters.controls import RecordingReviewRouter
 from ..config import Container, Settings, build_container
 from ..domain.kernel import utcnow
 from ..domain.models import ContactRef, TurnSubmission
@@ -156,11 +157,13 @@ def whisper_panel(
 
     Returns:
       A JSON-safe panel with every string masked for personal data, plus ``review_ref``: where
-      an escalation WENT. Empty only when nothing escalated.
+      an escalation WENT, and ``review_routing``: ``routed``, ``failed`` (not queued),
+      ``off`` or ``not_required``. ``review_ref`` is empty unless the escalation was routed.
     """
     container = _container(settings)
     services.require_mode(container, ContactMode.AGENT_ASSIST)
-    built = services.build_services(container)
+    routing = RecordingReviewRouter(container.review_router)
+    built = services.build_services(container, review_router=routing)
     result = built.agent_assist.observe(
         _submission(
             contact_id=contact_id,
@@ -193,6 +196,7 @@ def whisper_panel(
             "requires_human_review": result.requires_human_review,
         },
         review_ref=result.review_ref,
+        review_routing=routing.outcome.value,
     )
 
 
@@ -228,11 +232,13 @@ def self_service_reply(
 
     Returns:
       A JSON-safe result with every string masked for personal data, including the gate verdict
-      and its reasons, the handoff trigger where one fired, and ``review_ref``.
+      and its reasons, the handoff trigger where one fired, ``review_ref`` and
+      ``review_routing``.
     """
     container = _container(settings)
     services.require_mode(container, ContactMode.SELF_SERVICE)
-    built = services.build_services(container)
+    routing = RecordingReviewRouter(container.review_router)
+    built = services.build_services(container, review_router=routing)
     result = built.self_service.handle(
         _submission(
             contact_id=contact_id,
@@ -261,6 +267,7 @@ def self_service_reply(
             "requires_human_review": result.requires_human_review,
         },
         review_ref=result.review_ref,
+        review_routing=routing.outcome.value,
     )
 
 
@@ -293,13 +300,18 @@ def verify_audit_trail(settings: Settings | None = None) -> dict[str, Any]:
     }
 
 
-def _panel_payload(payload: dict[str, Any], *, review_ref: str) -> dict[str, Any]:
+def _panel_payload(
+    payload: dict[str, Any], *, review_ref: str, review_routing: str
+) -> dict[str, Any]:
     redacted = _redacted(payload)
     if not isinstance(redacted, dict):  # pragma: no cover - a dict redacts to a dict
         raise TypeError("a tool result must serialise to a JSON object")
     # Attached AFTER the redaction pass: it is a routing reference, not narrative text, and
     # masking an identifier inside it would break the caller's ability to look the review up.
     redacted["review_ref"] = review_ref
+    # What happened to the hand-off (routed, failed, off, not_required): an empty reference
+    # alone cannot tell the agent a failed hand-off from one that was never needed.
+    redacted["review_routing"] = review_routing
     return redacted
 
 

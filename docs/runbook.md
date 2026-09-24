@@ -50,7 +50,9 @@ Order of operations that is not obvious:
 Three sibling services are required once the edge is enabled, and the plan refuses without
 them: `human_review_url` (rule R8, the console an escalation is routed to), `guardrail_url`
 (rule R1, the gateway every inbound turn is screened through) and `retrieval_url` (rule R3, the
-governed index a suggestion is grounded in). `tool_catalog_url` is required in addition when
+governed index a suggestion is grounded in). The first two are required only while their
+runtime control is on: `review_routing_enabled = false` or `guardrail_enabled = false` states the
+control off on the service and lifts the requirement (see "Runtime controls" below). `tool_catalog_url` is required in addition when
 self-service is served, because that is the mode that takes actions. Each of those is a
 refusal the application would otherwise make at the first live contact.
 
@@ -197,10 +199,35 @@ see `config.ProfileChoice`.
 Set `HUMAN_REVIEW_URL` to the `human-review-console` (HTTPS is required off loopback) and provide
 `HUMAN_REVIEW_S2S_TOKEN`; `HUMAN_REVIEW_S2S_SIGNING_KEY` optionally signs the propagated actor. These are the
 OUTBOUND credentials and are deliberately distinct from this service's own inbound
-`CONTACT_S2S_TOKEN`. With the URL unset, the managed router REFUSES rather
-than swallowing the escalation, so a misconfiguration is a loud failure and never a silent
-auto-execution. Under the local profile the escalation goes to the review-kit outbox, which is
-inspectable and flushes to the console when one becomes reachable.
+`CONTACT_S2S_TOKEN`. With the URL unset and routing on, the process REFUSES TO BOOT under `gcp`,
+so a misconfiguration is a loud failure and never a silent auto-execution. Under the local
+profile the escalation goes to the review-kit outbox, which is inspectable and flushes to the
+console when one becomes reachable.
+
+## Runtime controls
+
+`CONTACT_REVIEW_ROUTING` and `CONTACT_GUARDRAIL` each switch one cheap runtime control, read once
+at startup in three states: unset is on, `true`/`false` (or `on`/`off`, `1`/`0`, `yes`/`no`)
+wins, and an emptied or unrecognised value refuses to boot, naming the variable. The Terraform
+states both (`review_routing_enabled`, `guardrail_enabled`, default `true`). A process with
+either off logs one `WARNING` at startup naming each. The `modes.*.enabled` flags are separate
+and unchanged; `pii-kit` masking of the audit trail, tool results and review payload has no
+switch.
+
+- **Review routing off** binds a router that submits nothing. An escalated turn is still
+  audited `ESCALATED` and still says `requires_human_review`, and every response reports
+  `review_routing: "off"` with an empty `review_ref`, so nobody reads it as queued. Under `gcp`
+  with routing on, an unset `HUMAN_REVIEW_URL` refuses to boot.
+- **Guardrail off** binds a screen that passes every turn with the detail `guardrail off`, so
+  retrieval and generation see turns nobody screened. Under `gcp` with the guardrail on, an
+  unset `GUARDRAIL_GATEWAY_URL` refuses to boot rather than failing closed on the first turn.
+- **A failed hand-off** is logged at `WARNING` with the exception type and reported as
+  `review_routing: "failed"` with an empty `review_ref`; the turn itself is still answered.
+  The API responses, the agent tools' payloads and the CLI's per-turn line all carry it, and
+  the voice gateway logs it. Restore the console and resubmit: the item is not queued.
+- **An entrypoint that never routes or screens** states both off rather than naming services it
+  will not call: `eval/run_eval.py --mode gate` under `gcp` runs with
+  `CONTACT_REVIEW_ROUTING=off CONTACT_GUARDRAIL=off` unless both URLs are set.
 
 ## Outbound credentials for the sibling services (rules R1 and R3)
 The `agent-guardrail-gateway` screen, the `enterprise-knowledge-base` governed index and the MCP action catalog are reached over

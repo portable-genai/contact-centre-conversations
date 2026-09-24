@@ -14,6 +14,7 @@ import sys
 from hex_service_kit.logging import configure_logging
 
 from .. import services
+from ..adapters.controls import RecordingReviewRouter
 from ..config import build_container
 from ..domain.kernel import utcnow
 from ..domain.models import ContactChannel, ContactRef
@@ -93,7 +94,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"refused: {exc}", file=sys.stderr)
         return 3
 
-    built = services.build_services(container)
     # The tenant partition is configuration, not a flag. It says whose contacts this
     # process may read, and a caller who can choose it can choose somebody else's.
     tenant = container.settings.tenant.strip()
@@ -109,6 +109,10 @@ def main(argv: list[str] | None = None) -> int:
 
     for submission in channel.turns(contact):
         as_of = utcnow()
+        # The hand-off never fails an already-decided, already-audited turn; each turn says
+        # what happened to it instead (the fleet's runtime-control contract).
+        routing = RecordingReviewRouter(container.review_router)
+        built = services.build_services(container, review_router=routing)
         if mode is ContactMode.AGENT_ASSIST:
             panel = built.agent_assist.observe(submission, actor=args.actor, as_of=as_of)
             print(
@@ -127,8 +131,8 @@ def main(argv: list[str] | None = None) -> int:
             )
             review = (reply.requires_human_review, reply.review_ref)
         if review[0]:
-            # Rule R8 on the CLI path too: the service routed it, and the reference says where.
-            print(f"  routed to human review: {review[1]}")
+            # Rule R8 on the CLI path too: say what happened to the hand-off, and where it went.
+            print(f"  human review hand-off: {routing.outcome.value} {review[1]}".rstrip())
     return 0
 
 

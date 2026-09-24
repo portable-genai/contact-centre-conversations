@@ -69,6 +69,7 @@ from hex_service_kit.web import (
 )
 from speech_lexicon_kit import ChannelRole
 
+from ..adapters.controls import RecordingReviewRouter
 from ..config import (
     LOCAL_PROFILE,
     Container,
@@ -125,6 +126,15 @@ def _container() -> Container:
 def _services() -> ModeServices:
     """Both mode services, wired once. The MODE GATE is checked per request, not here."""
     return build_services(_container())
+
+
+def _routed_services(routing: RecordingReviewRouter) -> ModeServices:
+    """Both mode services for ONE request, handing off through that request's recorder.
+
+    The services hold no state of their own (the stores live in the cached container), so
+    building them per request costs a few objects and lets the response report its hand-off.
+    """
+    return build_services(_container(), review_router=routing)
 
 
 def _submission(request: TurnRequest, *, mode: ContactMode, principal: Principal) -> TurnSubmission:
@@ -346,15 +356,19 @@ def agent_assist_turn(
     service: a missed disclosure window is routed to human-review-console in the same call that
     found it.
     """
+    # The hand-off never fails an already-decided, already-audited turn; the response says what
+    # happened to it instead (the fleet's runtime-control contract).
+    routing = RecordingReviewRouter(_container().review_router)
     return AssistResponse.from_domain(
         _run(
-            lambda: _services().agent_assist.observe(
+            lambda: _routed_services(routing).agent_assist.observe(
                 _submission(request, mode=ContactMode.AGENT_ASSIST, principal=principal),
                 actor=principal.actor,
                 as_of=utcnow(),
             ),
             mode=ContactMode.AGENT_ASSIST,
-        )
+        ),
+        review_routing=routing.outcome.value,
     )
 
 
@@ -369,9 +383,10 @@ def self_service_turn(
     and promotes on its own model-quality-gate evidence, so enabling the other one grants nothing
     here.
     """
+    routing = RecordingReviewRouter(_container().review_router)
     return SelfServiceResponse.from_domain(
         _run(
-            lambda: _services().self_service.handle(
+            lambda: _routed_services(routing).self_service.handle(
                 _submission(request, mode=ContactMode.SELF_SERVICE, principal=principal),
                 actor=principal.actor,
                 as_of=utcnow(),
@@ -379,7 +394,8 @@ def self_service_turn(
                 parameters=dict(request.parameters),
             ),
             mode=ContactMode.SELF_SERVICE,
-        )
+        ),
+        review_routing=routing.outcome.value,
     )
 
 

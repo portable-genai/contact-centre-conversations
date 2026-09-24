@@ -117,18 +117,36 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "GCP_REGION"
         value = var.region
       }
-      # Rule R8: the console an escalation is routed to. Required whenever the edge is enabled
-      # (variables.tf), because the managed router refuses rather than swallowing one.
+      # The two cheap runtime controls, stated rather than inherited: on in the reference.
+      # Off is a deployment choice the service logs at startup.
       env {
-        name  = "HUMAN_REVIEW_URL"
-        value = var.human_review_url
+        name  = "CONTACT_REVIEW_ROUTING"
+        value = tostring(var.review_routing_enabled)
       }
-      # Rule R1: the gateway every inbound turn is screened through after redaction. Also
-      # required whenever the edge is enabled: only a CLEAN screen may reach retrieval or
-      # generation, so an unconfigured gateway is a service that cannot handle one turn.
       env {
-        name  = "GUARDRAIL_GATEWAY_URL"
-        value = var.guardrail_url
+        name  = "CONTACT_GUARDRAIL"
+        value = tostring(var.guardrail_enabled)
+      }
+      # Rule R8: the console an escalation is routed to. Required whenever the edge is enabled
+      # with routing on (variables.tf), because the service refuses to boot without one. Set
+      # only when it carries a value: an EMPTIED variable refuses to boot even with routing off.
+      dynamic "env" {
+        for_each = var.human_review_url == "" ? [] : [var.human_review_url]
+        content {
+          name  = "HUMAN_REVIEW_URL"
+          value = env.value
+        }
+      }
+      # Rule R1: the gateway every inbound turn is screened through after redaction. Required
+      # whenever the edge is enabled with the guardrail on: only a CLEAN screen may reach
+      # retrieval or generation, and the service refuses to boot without a gateway. Set only
+      # when it carries a value, for the same three-state reason.
+      dynamic "env" {
+        for_each = var.guardrail_url == "" ? [] : [var.guardrail_url]
+        content {
+          name  = "GUARDRAIL_GATEWAY_URL"
+          value = env.value
+        }
       }
       # Rule R3: the governed knowledge base a suggested reply must be grounded in.
       env {

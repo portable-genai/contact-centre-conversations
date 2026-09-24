@@ -7,6 +7,8 @@ carrying every field of both would let a client written for one mode silently re
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 from ..domain.models import (
@@ -17,6 +19,9 @@ from ..domain.models import (
     SelfServiceResult,
     SuggestedReply,
 )
+
+#: The four outcomes of a human-review hand-off, as the API reports them.
+ReviewRoutingValue = Literal["routed", "failed", "off", "not_required"]
 
 
 class CitationModel(BaseModel):
@@ -100,10 +105,17 @@ class AssistResponse(BaseModel):
     screen: str = ""
     deterministic_only: bool = False
     requires_human_review: bool = False
+    #: Where the escalation WENT: the console's review id, or the local queue reference. Empty
+    #: exactly when ``review_routing`` is not ``routed``.
     review_ref: str = ""
+    #: What happened to the hand-off: routed, failed, off or not_required. ``failed`` means the
+    #: result is NOT queued for review, and the console says so.
+    review_routing: ReviewRoutingValue = "not_required"
 
     @classmethod
-    def from_domain(cls, result: AssistResult) -> AssistResponse:
+    def from_domain(
+        cls, result: AssistResult, *, review_routing: str = "not_required"
+    ) -> AssistResponse:
         return cls(
             mode=result.mode.value,
             contact_id=result.contact.contact_id,
@@ -124,6 +136,7 @@ class AssistResponse(BaseModel):
             deterministic_only=result.deterministic_only,
             requires_human_review=result.requires_human_review,
             review_ref=result.review_ref,
+            review_routing=review_routing,  # type: ignore[arg-type]
         )
 
 
@@ -198,10 +211,17 @@ class SelfServiceResponse(BaseModel):
     screen: str = ""
     contained: bool = False
     requires_human_review: bool = False
+    #: Where the escalation WENT: the console's review id, or the local queue reference. Empty
+    #: exactly when ``review_routing`` is not ``routed``.
     review_ref: str = ""
+    #: What happened to the hand-off: routed, failed, off or not_required. ``failed`` means the
+    #: result is NOT queued for review, and the console says so.
+    review_routing: ReviewRoutingValue = "not_required"
 
     @classmethod
-    def from_domain(cls, result: SelfServiceResult) -> SelfServiceResponse:
+    def from_domain(
+        cls, result: SelfServiceResult, *, review_routing: str = "not_required"
+    ) -> SelfServiceResponse:
         return cls(
             mode=result.mode.value,
             contact_id=result.contact.contact_id,
@@ -225,6 +245,7 @@ class SelfServiceResponse(BaseModel):
             contained=result.contained,
             requires_human_review=result.requires_human_review,
             review_ref=result.review_ref,
+            review_routing=review_routing,  # type: ignore[arg-type]
         )
 
 
