@@ -62,6 +62,7 @@ interface AssistPanel {
   deterministic_only: boolean;
   requires_human_review: boolean;
   review_ref: string;
+  review_routing?: ReviewRouting;
 }
 
 interface SelfServiceReply {
@@ -80,6 +81,28 @@ interface SelfServiceReply {
   contained: boolean;
   requires_human_review: boolean;
   review_ref: string;
+  review_routing?: ReviewRouting;
+}
+
+/** The four outcomes of a human-review hand-off, as the API reports them. */
+type ReviewRouting = "routed" | "failed" | "off" | "not_required";
+
+// What happened to the human-review hand-off, in the words the user needs. A turn that
+// escalated but is not queued must say so rather than read as reviewed.
+const REVIEW_ROUTING_TEXT: Record<Exclude<ReviewRouting, "not_required">, string> = {
+  routed: "Sent to the review console.",
+  failed: "Could not reach the review console; this item is not queued for review.",
+  off: "Review routing is off in this deployment; this item is not queued for review.",
+};
+
+function ReviewRoutingNote({ routing, reference }: { routing?: ReviewRouting; reference: string }) {
+  if (!routing || routing === "not_required") return null;
+  return (
+    <p className="banner" data-review-routing={routing}>
+      Review required. {REVIEW_ROUTING_TEXT[routing]}
+      {routing === "routed" && reference ? ` Reference: ${reference}` : ""}
+    </p>
+  );
 }
 
 const ASSIST_SCRIPT = [
@@ -286,9 +309,7 @@ function WhisperPanel({ panel }: { panel: AssistPanel }) {
     <section>
       <h2>Whisper panel</h2>
       {panel.requires_human_review ? (
-        <p className="banner">
-          Review required. Routed to human review: {panel.review_ref || "no reference"}
-        </p>
+        <ReviewRoutingNote routing={panel.review_routing} reference={panel.review_ref} />
       ) : null}
       {panel.deterministic_only ? (
         <p className="banner">
@@ -345,6 +366,9 @@ function ChatPanel({ reply }: { reply: SelfServiceReply }) {
   return (
     <section>
       <h2>Self service</h2>
+      {reply.requires_human_review ? (
+        <ReviewRoutingNote routing={reply.review_routing} reference={reply.review_ref} />
+      ) : null}
       {reply.handoff ? (
         <p className="banner">
           Handing you to a person. Reason: {reply.handoff.trigger}. {reply.handoff.summary}

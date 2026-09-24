@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .adapters.controls import RecordingReviewRouter
 from .config import Container
 from .domain.assist_service import AgentAssistService
 from .domain.contact_kernel import ContactKernel
@@ -38,8 +39,14 @@ class ModeServices:
         return self.agent_assist if mode is ContactMode.AGENT_ASSIST else self.self_service
 
 
-def build_services(container: Container) -> ModeServices:
+def build_services(
+    container: Container, *, review_router: RecordingReviewRouter | None = None
+) -> ModeServices:
     """Wire the ports into both mode services. No mode check here: see :func:`require_mode`.
+
+    ``review_router`` replaces the container's router for the services built here: a caller
+    that reports the hand-off passes a :class:`RecordingReviewRouter` wrapping the container's,
+    so a failed hand-off is reported and logged rather than failing an audited turn.
 
     The guard is constructed with the container's guardrail adapter bound as its screen callable,
     which is what makes "redact, then screen, then everything else" a property of the object
@@ -47,6 +54,7 @@ def build_services(container: Container) -> ModeServices:
     """
     settings = container.settings
     guardrail = container.guardrail
+    router = review_router or container.review_router
     guard = TurnGuard(
         PII_PATTERNS,
         lambda text: guardrail.screen(text),
@@ -63,7 +71,7 @@ def build_services(container: Container) -> ModeServices:
         agent_assist=AgentAssistService(
             kernel=kernel,
             packs=settings.packs,
-            review_router=container.review_router,
+            review_router=router,
             tracer=container.tracer,
         ),
         self_service=SelfServiceService(
@@ -71,7 +79,7 @@ def build_services(container: Container) -> ModeServices:
             packs=settings.packs,
             tools=container.tool_catalog,
             party_records=container.party_records,
-            review_router=container.review_router,
+            review_router=router,
             tracer=container.tracer,
         ),
     )

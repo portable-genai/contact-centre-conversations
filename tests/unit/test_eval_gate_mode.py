@@ -57,8 +57,15 @@ def _decision(*, passed: bool = True, **overrides: Any) -> dict[str, Any]:
 
 
 def _managed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The managed profile, which is the only one `--mode gate` will run under."""
+    """The managed profile, which is the only one `--mode gate` will run under.
+
+    The promotion gate asks model-quality-gate for a verdict; it routes nothing and screens
+    nothing, so it states both runtime controls off rather than naming a console and a gateway
+    it would never call (the fleet's runtime-control contract).
+    """
     monkeypatch.setenv("CONTACT_PROFILE", "gcp")
+    monkeypatch.setenv("CONTACT_REVIEW_ROUTING", "off")
+    monkeypatch.setenv("CONTACT_GUARDRAIL", "off")
     monkeypatch.delenv("CONTACT_QUALITY_URL", raising=False)
 
 

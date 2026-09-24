@@ -333,9 +333,15 @@ variable "human_review_url" {
   }
 
   validation {
-    condition     = !var.production_edge_enabled || can(regex("^https://", var.human_review_url))
-    error_message = "production_edge_enabled requires human_review_url (rule R8): the managed review router refuses to run with no console configured."
+    condition     = !var.production_edge_enabled || !var.review_routing_enabled || can(regex("^https://", var.human_review_url))
+    error_message = "production_edge_enabled with review_routing_enabled requires human_review_url (rule R8): the service refuses to boot with routing on and no console named. Name one, or set review_routing_enabled = false."
   }
+}
+
+variable "review_routing_enabled" {
+  description = "Switch review routing to the human-review-console (CONTACT_REVIEW_ROUTING). A cheap runtime control: on in the reference, reversible, so it takes a default."
+  type        = bool
+  default     = true
 }
 
 variable "guardrail_url" {
@@ -355,9 +361,15 @@ variable "guardrail_url" {
   }
 
   validation {
-    condition     = !var.production_edge_enabled || can(regex("^https://", var.guardrail_url))
-    error_message = "production_edge_enabled requires guardrail_url (rule R1): every inbound turn is screened through the agent-guardrail-gateway, so a served deployment with none configured cannot handle a single turn."
+    condition     = !var.production_edge_enabled || !var.guardrail_enabled || can(regex("^https://", var.guardrail_url))
+    error_message = "production_edge_enabled with guardrail_enabled requires guardrail_url (rule R1): the service refuses to boot with the guardrail on and no gateway named. Name one, or set guardrail_enabled = false."
   }
+}
+
+variable "guardrail_enabled" {
+  description = "Switch per-turn screening through the agent-guardrail-gateway (CONTACT_GUARDRAIL). A cheap runtime control: on in the reference, reversible, so it takes a default. Off means every turn passes unscreened, stated at startup."
+  type        = bool
+  default     = true
 }
 
 variable "retrieval_url" {
@@ -476,6 +488,8 @@ variable "additional_secret_env" {
         "CONTACT_SELF_SERVICE",
         "CONTACT_SELF_SERVICE_BUNDLE",
         "CONTACT_QUALITY_URL",
+        "CONTACT_GUARDRAIL",
+        "CONTACT_REVIEW_ROUTING",
         "CONTACT_TOOL_CATALOG_URL",
         "GOOGLE_CLOUD_PROJECT",
         "GCP_REGION",

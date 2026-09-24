@@ -10,6 +10,11 @@ reach the gateway raises, and ``TurnGuard`` converts the raise into
 ``ScreenOutcome.UNAVAILABLE``, which fails closed per mode. What no adapter may do is return
 CLEAN when it did not screen: that is the one failure that would make the whole control
 decorative.
+
+The one stated exception is the disabled adapter a deployment binds by setting
+``CONTACT_GUARDRAIL=off`` (``adapters/controls.py``): it returns CLEAN with the detail
+``guardrail off``, and the process says so in a startup warning. Switching screening off is a
+deployment's choice to make out loud, never an adapter's to make silently.
 """
 
 from __future__ import annotations

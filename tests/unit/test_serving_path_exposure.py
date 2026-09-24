@@ -45,6 +45,19 @@ from contact_centre_conversations.api.app import (
 from tests import REPO_ROOT
 from tests.conftest import reimport
 
+
+@pytest.fixture(autouse=True)
+def _managed_deployment_names_its_services(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A managed process with review routing and the guardrail on refuses to boot without the
+    console and the gateway they call.
+
+    These tests build the app under the managed profile to exercise identity and exposure, not
+    routing or screening, so they name both services the way any managed deployment must.
+    """
+    monkeypatch.setenv("HUMAN_REVIEW_URL", "https://review.example.test")
+    monkeypatch.setenv("GUARDRAIL_GATEWAY_URL", "https://guardrail.example.test")
+
+
 _PROFILE_ENV = "CONTACT_PROFILE"
 _TOKEN_ENV = "CONTACT_S2S_TOKEN"
 _INSECURE_DEMO_ENV = "CONTACT_ALLOW_INSECURE_DEMO"

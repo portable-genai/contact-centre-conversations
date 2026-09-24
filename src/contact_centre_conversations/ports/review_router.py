@@ -24,7 +24,9 @@ class ReviewRouterPort(Protocol):
 
         ``maker`` is the VERIFIED principal that originated the underlying decision, never a
         client-asserted actor. The return value is the console's review id where the console
-        answered, or a local queue reference where the submission was buffered; it is never
-        empty, so a caller can record what happened to the escalation.
+        answered, or a local queue reference where the submission was buffered; a routing
+        adapter never returns it empty. Callers hand off through
+        ``adapters.controls.RecordingReviewRouter``, which returns an empty reference when
+        routing is switched off or the hand-off failed, and reports which of the two it was.
         """
         ...

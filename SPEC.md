@@ -83,8 +83,11 @@ the public directly.
   sets `requires_human_review=True` AND is routed through `ReviewRouterPort` to the `human-review-console`
   in the same call. The review is TAGGED with the mode that produced it, in the action and in the
   segregation-of-duty group, so one mode's checkers cannot sign off the other's escalations. The flag alone is not the escalation. The response carries `review_ref`, so a
-  caller can tell a routed escalation from one that stopped here. The managed adapter refuses to
-  run with no console configured rather than swallowing the escalation.
+  caller can tell a routed escalation from one that stopped here, and `review_routing` (`routed`,
+  `failed`, `off`, `not_required`) says what happened to the hand-off. Under `gcp` with routing
+  on, the process refuses to boot with no console configured; a deployment that means to run
+  without one states `CONTACT_REVIEW_ROUTING=off`. A hand-off that fails is logged and reported
+  as `failed` rather than failing a turn that is already decided and audited.
 - **Profile**: resolved ONCE, at import, into a `ProfileChoice` and never a bare string. Three
   states of `CONTACT_PROFILE`: UNSET is NO CHOICE (the SDK-free adapters
   still bind, but the seeded personas are refused, no service-to-service scheme is selected, every

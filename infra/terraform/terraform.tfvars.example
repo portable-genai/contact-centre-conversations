@@ -87,10 +87,16 @@ production_edge_enabled = false
 # The sibling services this service cannot serve a turn without. All three are
 # required once the edge is enabled: rule R8 (the console an escalation is routed
 # to), rule R1 (the gateway every inbound turn is screened through) and rule R3
-# (the governed knowledge base a suggestion must be grounded in).
+# (the governed knowledge base a suggestion must be grounded in). The first two are
+# required only while their runtime control is on (below).
 # human_review_url = "https://review.fictional-bank.example"
 # guardrail_url    = "https://guardrail.fictional-bank.example"
 # retrieval_url    = "https://knowledge.fictional-bank.example"
+
+# Cheap runtime controls stay on in the reference; say so rather than inheriting the default.
+# Off is stated to the service (CONTACT_REVIEW_ROUTING / CONTACT_GUARDRAIL) and logged at boot.
+review_routing_enabled = true
+guardrail_enabled      = true
 
 # The client's action catalog, required only when the self-service mode is served:
 # that is the mode that takes actions, and the catalog is where the consequential

@@ -37,6 +37,7 @@ from typing import Any
 from hex_service_kit.netdefaults import resolve_bind_host
 
 from .. import services
+from ..adapters.controls import RecordingReviewRouter
 from ..config import PROFILE_CHOICE, Container
 from ..domain.models import ContactChannel, ContactRef
 from ..domain.modes import ContactMode
@@ -322,7 +323,11 @@ class VoiceGateway(asyncio.DatagramProtocol):
         #: arrives, reclaims the dialog, the RTP port and the calls entry rather than leaking
         #: them for the life of the process.
         self._ack_reapers: dict[str, asyncio.Task[None]] = {}
-        self._services = services.build_services(container)
+        # A call's hand-off never fails the turn a caller is waiting on; a failure is logged by
+        # exception type rather than raised (the fleet's runtime-control contract).
+        self._services = services.build_services(
+            container, review_router=RecordingReviewRouter(container.review_router)
+        )
         self._transport: asyncio.DatagramTransport | None = None
 
     # ------------------------------------------------------------------ socket plumbing

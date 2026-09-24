@@ -411,6 +411,39 @@ run "reject_edge_with_no_guardrail_gateway" {
   expect_failures = [var.guardrail_url]
 }
 
+run "edge_with_routing_and_guardrail_stated_off_needs_neither_url" {
+  command = plan
+
+  variables {
+    project_id                  = "fictional-contact-sg"
+    enable_vpc_sc               = false
+    production_edge_enabled     = true
+    api_image                   = "asia-southeast1-docker.pkg.dev/fictional-contact-sg/contact/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    service_domain              = "contact-centre.fictional-bank.example"
+    human_review_url            = ""
+    guardrail_url               = ""
+    review_routing_enabled      = false
+    guardrail_enabled           = false
+    retrieval_url               = "https://knowledge.fictional-bank.example"
+    alert_notification_channels = ["projects/fictional-contact-sg/notificationChannels/123"]
+  }
+
+  assert {
+    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "CONTACT_REVIEW_ROUTING"]) == "false"
+    error_message = "a deployment that switches routing off must tell the service so, not leave it to infer from a missing console"
+  }
+
+  assert {
+    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "CONTACT_GUARDRAIL"]) == "false"
+    error_message = "a deployment that switches screening off must tell the service so, not leave it to infer from a missing gateway"
+  }
+
+  assert {
+    condition     = length([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.name if contains(["HUMAN_REVIEW_URL", "GUARDRAIL_GATEWAY_URL"], item.name)]) == 0
+    error_message = "an empty console or gateway URL must be left off the service: the service refuses an EMPTIED variable at boot"
+  }
+}
+
 run "reject_edge_with_no_knowledge_base" {
   command = plan
 
