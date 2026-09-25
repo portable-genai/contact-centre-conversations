@@ -20,11 +20,17 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+from hex_service_kit import provenance
+
 from ...config import Settings
 from ...domain.models import RetrievedPassage
 from ...domain.suggestions import MAX_SUGGESTION_CHARS, passage_id
 
 _LEAD = "Based on the current policy: "
+
+#: What this drafter answers as, for the console's model pill: the name ``generator_model``
+#: reports under ``local``, so the pill before and after an answer agree.
+STUB_MODEL = "deterministic-offline-stub"
 
 
 class LocalTemplateGenerationAdapter:
@@ -38,6 +44,7 @@ class LocalTemplateGenerationAdapter:
     ) -> Mapping[str, object] | None:
         if not passages:
             return None
+        provenance.note_model(STUB_MODEL)
         best = max(passages, key=lambda passage: (passage.score, passage.citation.source_id))
         sentence = best.text.split(". ")[0].strip().rstrip(".")
         text = f"{_LEAD}{sentence}."

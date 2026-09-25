@@ -34,6 +34,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, ClassVar
 
+from hex_service_kit import provenance
+
 from contact_centre_conversations.config import Settings
 from contact_centre_conversations.domain.models import RetrievedPassage
 
@@ -103,6 +105,9 @@ class ReplayGenerationAdapter:
                 "than falling back: a replay that substituted another drafter would report a "
                 "score for a model that produced none of it."
             )
+        # The model that answered is the RECORDED one, as the row states it: the pill must name
+        # the model whose words these are, never the configured id or the offline stub.
+        provenance.note_model(str(row.get("model") or ""))
         # A recorded `null` is a real answer: the model declined, and the pipeline treats that
         # as no suggestion. Replaying it as an error would hide a case worth scoring.
         response = row.get("response")
