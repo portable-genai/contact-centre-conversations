@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+from hex_service_kit import provenance
+
 from ...config import Settings
 from ...domain.models import RetrievedPassage
 from ...domain.suggestions import MAX_SUGGESTION_CHARS
@@ -52,13 +54,19 @@ class VertexGenerationAdapter:
         from google.genai import types  # noqa: PLC0415
 
         client = genai.Client(vertexai=True, location=self._settings.region)
+        model = self._settings.model
         response = client.models.generate_content(
-            model=self._settings.model,
+            model=model,
             contents=_contents(prompt, passages),
             config=types.GenerateContentConfig(
                 system_instruction=_SYSTEM,
                 response_mime_type="application/json",
                 response_schema=_SCHEMA,
+                # PINNED, deliberately, although this call drafts. Its output is what the eval
+                # scores against hand-written labels, and the committed replay corpus
+                # (eval/datasets/gemini_replay.jsonl) was recorded at 0.0. The replay key is
+                # model + prompt + passages, not sampling, so freeing this would silently make
+                # every recorded answer stand for a configuration that no longer runs.
                 temperature=0.0,
                 max_output_tokens=512,
                 # Thinking OFF, and this line is load-bearing. The configured model spends
@@ -74,6 +82,7 @@ class VertexGenerationAdapter:
                 thinking_config=types.ThinkingConfig(thinking_budget=0),
             ),
         )
+        provenance.note_model(model)
         parsed = getattr(response, "parsed", None)
         return parsed if isinstance(parsed, Mapping) else None
 

@@ -29,6 +29,8 @@ import contextlib
 from collections.abc import AsyncIterator, Mapping
 from typing import Any
 
+from hex_service_kit import provenance
+
 from ...config import Settings
 from ...ports.voice_engine import (
     AUTHORS_SPEECH,
@@ -88,6 +90,7 @@ class GeminiLiveVoiceEngine:
         )
         connection = client.aio.live.connect(model=voice.live_model, config=live_config)
         session = await connection.__aenter__()
+        provenance.note_model(voice.live_model)
         live = GeminiLiveVoiceSession(self._settings, types, connection, session)
         await live.seed_context(config)
         return live
