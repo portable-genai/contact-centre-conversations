@@ -37,8 +37,9 @@ audit_anchor_path: ${CONTACT_AUDIT_ANCHOR:-}
 # Google-signed OIDC token, from any project or any app, and reads its email as a principal.
 iap_audience: ${CONTACT_IAP_AUDIENCE:-}
 
-# Rule R8: where an escalated result is routed for human review. The managed profile REFUSES to
-# swallow an escalation when this is empty, so a producer cannot ship with R8 unwired.
+# Rule R8: where an escalated result is routed for human review. With review routing on
+# (CONTACT_REVIEW_ROUTING, unset means on) the managed profile REFUSES TO BOOT when this is
+# empty, so a producer cannot ship with R8 unwired; CONTACT_REVIEW_ROUTING=false states routing off.
 # The outbound S2S credentials are HUMAN_REVIEW_S2S_TOKEN / HUMAN_REVIEW_S2S_SIGNING_KEY (see .env.secrets.example),
 # deliberately distinct from this service's own inbound CONTACT_S2S_TOKEN.
 review_url: ${HUMAN_REVIEW_URL:-}
