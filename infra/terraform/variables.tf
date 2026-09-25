@@ -8,8 +8,9 @@
 #   P-07 (auditability and retention): `retention_days` is a variable because the WORM bucket
 #         lock is irreversible, so the retention window has to be a deliberate decision.
 #   P-06 / R8 (maker-checker): `human_review_url` is required when the serving edge is
-#         enabled, because the managed review router refuses to swallow an escalation with no
-#         console configured. A deploy that would ship R8 unwired fails at plan time.
+#         enabled with `review_routing_enabled` on, because the service refuses to boot with
+#         review routing on and no console named. A deploy that would ship R8 unwired fails at
+#         plan time; one that states routing off (`review_routing_enabled = false`) needs none.
 #   R1 (everything through agent-guardrail-gateway): `guardrail_url` is required for the same reason. Every
 #         inbound turn is redacted and then SCREENED, so an edge with no gateway configured
 #         cannot serve a single turn; it fails here instead of at the first live contact.
@@ -319,10 +320,11 @@ variable "self_service_promotion_bundle" {
 variable "human_review_url" {
   description = <<-EOT
     The human-review-console the managed review router submits escalations to
-    (HUMAN_REVIEW_URL). Rule R8 says an escalation is ROUTED and never merely flagged, and
-    the managed router refuses rather than swallowing one when this is empty, so the serving
-    edge requires it: a deploy that would ship R8 unwired fails here instead of at the first
-    escalation. HTTPS is required, because the payload carries a redacted contact.
+    (HUMAN_REVIEW_URL). Rule R8 says an escalation is ROUTED and never merely flagged,
+    and the service refuses to boot with review routing on and this empty, so the serving
+    edge requires it unless review_routing_enabled is false: a deploy that would ship R8
+    unwired fails here instead of at boot. HTTPS is required, because the payload carries
+    a redacted contact.
   EOT
   type        = string
   default     = ""
