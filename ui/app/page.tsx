@@ -16,6 +16,13 @@ const PERSONAS = ["analyst", "approver", "auditor", "other-tenant"];
 // that seeing one working says anything about the other.
 type Mode = "agent_assist" | "self_service";
 
+// The lines of business the reviewed packs under config/packs/ are keyed by. `vertical` is a
+// REQUIRED field of every turn: it selects which packs apply, and the service will not guess it.
+const VERTICALS = [
+  { id: "retail_banking", label: "Retail banking" },
+  { id: "general_insurance", label: "General insurance" },
+];
+
 interface CardSummary {
   name?: string;
   description?: string;
@@ -118,6 +125,7 @@ export default function Home() {
   const [modes, setModes] = useState<ModeStatus[]>([]);
 
   const [contactId, setContactId] = useState("ui-contact-0001");
+  const [vertical, setVertical] = useState(VERTICALS[0].id);
   const [turnIndex, setTurnIndex] = useState(0);
   const [text, setText] = useState(ASSIST_SCRIPT[0]);
   const [customerText, setCustomerText] = useState("What is my card balance please?");
@@ -162,6 +170,7 @@ export default function Home() {
           contact_id: contactId,
           market: "SG",
           locale: "en-SG",
+          vertical,
           text,
           index: turnIndex,
           speaker_id: "agent-1",
@@ -173,6 +182,7 @@ export default function Home() {
           contact_id: contactId,
           market: "SG",
           locale: "en-SG",
+          vertical,
           text: customerText,
           index: turnIndex,
           speaker_id: "customer",
@@ -261,6 +271,16 @@ export default function Home() {
           <label>
             Contact id
             <input value={contactId} onChange={(event) => setContactId(event.target.value)} />
+          </label>
+          <label>
+            Line of business (selects which reviewed packs apply)
+            <select value={vertical} onChange={(event) => setVertical(event.target.value)}>
+              {VERTICALS.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
           </label>
           {mode === "agent_assist" ? (
             <label>
