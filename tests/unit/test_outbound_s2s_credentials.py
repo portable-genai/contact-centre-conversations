@@ -135,7 +135,7 @@ def test_an_unusable_credential_refuses_before_the_socket_is_opened(
 
     monkeypatch.setattr(_s2s.urllib.request, "urlopen", _never_called)
     with pytest.raises(ValueError, match=_s2s.TOKEN_ENV):
-        _s2s.post_json(_REMOTE, "/v1/screen", {"text": "hello", "direction": "inbound"})
+        _s2s.post_json(_REMOTE, "/v1/guardrail/screen", {"text": "hello", "direction": "input"})
 
 
 def test_the_commons_reader_now_tells_the_two_states_apart_by_itself(
