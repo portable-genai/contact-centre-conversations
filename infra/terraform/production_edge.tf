@@ -54,7 +54,7 @@ resource "terraform_data" "edge_contract" {
 
 # --------------------------------------------------------------------------- #
 # Secrets. No secret VALUE is ever in this configuration: the inbound service
-# credential and the outbound agent-guardrail-gateway, enterprise-knowledge-base, human-review-console and action-catalog credentials
+# credential and the outbound enterprise-knowledge-base, human-review-console and action-catalog credentials
 # are existing Secret Manager versions, referenced by id and pinned to an exact
 # numeric version.
 # --------------------------------------------------------------------------- #
@@ -145,6 +145,16 @@ resource "google_cloud_run_v2_service" "api" {
         for_each = var.guardrail_url == "" ? [] : [var.guardrail_url]
         content {
           name  = "GUARDRAIL_GATEWAY_URL"
+          value = env.value
+        }
+      }
+      # The audience the gateway verifies its callers' Google-signed ID tokens against. The
+      # screening adapter mints one per call from this revision's service account; the gateway
+      # accepts no static bearer under gcp. Set only when it carries a value, as above.
+      dynamic "env" {
+        for_each = var.guardrail_audience == "" ? [] : [var.guardrail_audience]
+        content {
+          name  = "GUARDRAIL_GATEWAY_AUDIENCE"
           value = env.value
         }
       }

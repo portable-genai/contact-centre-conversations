@@ -4,7 +4,9 @@ Three of E1's managed adapters are not cloud SDK clients at all: the agent-guard
 the enterprise-knowledge-base governed-RAG retrieval and the MCP action catalog are HTTP calls to
 sibling services. They ride the same S2S rules every other producer uses, sourced from the commons
 rather than restated: an ``https://`` base URL outside loopback, a bearer token, and an optional
-HMAC-signed end-user actor.
+HMAC-signed end-user actor. The bearer is either a static credential or, for a sibling that
+verifies Google-signed OIDC ID tokens (the guardrail gateway under ``gcp``), an ID token minted
+per call for that sibling's audience from this service's workload identity.
 
 Every read here resolves THREE states, and that is the commons' own work rather than this
 module's. A header builder that takes env var NAMES and strips a value before it tests it
@@ -59,8 +61,23 @@ __all__ = [
 ]
 
 
-def headers(base_url: str, actor: str = "") -> dict[str, str]:
+def headers(
+    base_url: str,
+    actor: str = "",
+    *,
+    token_env: str = TOKEN_ENV,
+    audience: str = "",
+) -> dict[str, str]:
     """Auth headers for one S2S request (bearer token plus optional signed actor).
+
+    ``audience`` switches the bearer to WORKLOAD IDENTITY for a non-loopback sibling: when
+    ``token_env`` is unset the commons mints a Google-signed OIDC ID token for that audience
+    from this process's service account, which is the only credential a sibling verifying
+    Google-signed tokens under its ``gcp`` profile accepts. A static bearer in ``token_env``
+    still takes precedence (the commons' rule), so a sibling that mints must be given its
+    own ``token_env`` rather than the shared ``S2S_TOKEN``, or a static bearer meant for a
+    different sibling would be sent in place of the ID token. A loopback sibling never
+    mints: it is the offline zero-secret posture and carries no credential.
 
     ``base_url`` is what decides whether the bearer is REQUIRED, on the same loopback carve-out
     :func:`require_base_url` already applies to the scheme, and that decision is the only part
@@ -71,13 +88,16 @@ def headers(base_url: str, actor: str = "") -> dict[str, str]:
     HMAC and the header casing away from the verifier the siblings run
     (``hex_service_kit.web.make_require_service_caller``).
     """
+    remote = not is_loopback_host(urlparse(base_url).hostname)
     return client_headers(
         actor,
-        token_env=TOKEN_ENV,
+        token_env=token_env,
         signing_key_env=SIGNING_KEY_ENV,
         actor_header=_ACTOR_HEADER,
         actor_sig_header=_ACTOR_SIG_HEADER,
-        require_token=not is_loopback_host(urlparse(base_url).hostname),
+        audience=audience,
+        workload_identity=remote and bool(audience),
+        require_token=remote,
     )
 
 
@@ -98,6 +118,8 @@ def post_json(
     payload: dict[str, Any],
     *,
     actor: str = "",
+    token_env: str = TOKEN_ENV,
+    audience: str = "",
     timeout: float | None = None,
 ) -> dict[str, Any]:
     """POST one JSON document and return the parsed response, or raise.
@@ -105,13 +127,17 @@ def post_json(
     Raising is the contract. Every caller in this family turns a failure into a fail-closed
     verdict (an unavailable screen, an unreachable index), and a function that returned an empty
     dict on error would hand each of them a plausible-looking success instead. An unusable
-    credential raises from :func:`headers` here, before the socket is opened.
+    credential, or an ID token that cannot be minted, raises from :func:`headers` here, before
+    the socket is opened. ``token_env`` and ``audience`` are passed through to it.
     """
     request = urllib.request.Request(  # noqa: S310 - scheme validated by require_base_url
         f"{base_url}{path}",
         data=json.dumps(payload).encode("utf-8"),
         method="POST",
-        headers={"Content-Type": "application/json", **headers(base_url, actor)},
+        headers={
+            "Content-Type": "application/json",
+            **headers(base_url, actor, token_env=token_env, audience=audience),
+        },
     )
     with urllib.request.urlopen(  # noqa: S310 - scheme validated by require_base_url
         request, timeout=timeout or DEFAULT_TIMEOUT_SECONDS

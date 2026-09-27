@@ -14,6 +14,8 @@
 #   R1 (everything through agent-guardrail-gateway): `guardrail_url` is required for the same reason. Every
 #         inbound turn is redacted and then SCREENED, so an edge with no gateway configured
 #         cannot serve a single turn; it fails here instead of at the first live contact.
+#         `guardrail_audience` is required alongside it: the gateway accepts only a
+#         Google-signed ID token minted for its audience, not a static bearer.
 #
 # Two deploy paths are supported:
 #   - QUICK EVALUATION (project-scoped, no org-level roles): project_id plus
@@ -368,6 +370,29 @@ variable "guardrail_url" {
   }
 }
 
+variable "guardrail_audience" {
+  description = <<-EOT
+    The OIDC audience the agent-guardrail-gateway verifies (GUARDRAIL_GATEWAY_AUDIENCE here; it
+    must equal the gateway's GUARDRAIL_S2S_AUDIENCE exactly). Under gcp the gateway accepts only
+    a Google-signed ID token, so the screening adapter mints one per call for this audience from
+    this service's runtime service account, which must also be on the gateway's
+    GUARDRAIL_S2S_ALLOWED_CALLERS. The serving edge requires it with the guardrail on: the
+    service refuses to boot without one, so the refusal belongs at plan time.
+  EOT
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.guardrail_audience == "" || can(regex("^https://[^[:space:]]+$", var.guardrail_audience))
+    error_message = "guardrail_audience must be a nonblank https:// audience with no whitespace."
+  }
+
+  validation {
+    condition     = !var.production_edge_enabled || !var.guardrail_enabled || can(regex("^https://[^[:space:]]+$", var.guardrail_audience))
+    error_message = "production_edge_enabled with guardrail_enabled requires guardrail_audience: the gateway verifies a Google-signed ID token against its GUARDRAIL_S2S_AUDIENCE, and the service refuses to boot with a non-loopback gateway and no audience to mint for. Name it, or set guardrail_enabled = false."
+  }
+}
+
 variable "guardrail_enabled" {
   description = "Switch per-turn screening through the agent-guardrail-gateway (CONTACT_GUARDRAIL). A cheap runtime control: on in the reference, reversible, so it takes a default. Off means every turn passes unscreened, stated at startup."
   type        = bool
@@ -463,7 +488,7 @@ variable "additional_secret_env" {
   description = <<-EOT
     Environment variable name to an immutable existing Secret Manager secret version, mounted
     on the API service. This is how the inbound service credential (CONTACT_S2S_TOKEN) and the
-    outbound credentials (S2S_TOKEN and S2S_SIGNING_KEY for agent-guardrail-gateway, enterprise-knowledge-base and the action
+    outbound credentials (S2S_TOKEN and S2S_SIGNING_KEY for enterprise-knowledge-base and the action
     catalog; HUMAN_REVIEW_S2S_TOKEN and HUMAN_REVIEW_S2S_SIGNING_KEY for the review console) reach the
     process: no secret value is ever written into this configuration. Names this stack sets
     itself are reserved, so a secret cannot silently shadow the residency, identity, mode or
@@ -495,6 +520,7 @@ variable "additional_secret_env" {
         "CONTACT_TOOL_CATALOG_URL",
         "GOOGLE_CLOUD_PROJECT",
         "GCP_REGION",
+        "GUARDRAIL_GATEWAY_AUDIENCE",
         "GUARDRAIL_GATEWAY_URL",
         "HUMAN_REVIEW_URL",
         "KNOWLEDGE_BASE_URL",
