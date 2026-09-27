@@ -395,8 +395,8 @@ requires-dist = [
     { name = "google-cloud-logging", marker = "extra == 'gcp'", specifier = ">=3.0" },
     { name = "google-cloud-speech", marker = "extra == 'gcp'", specifier = ">=2.0" },
     { name = "google-cloud-texttospeech", marker = "extra == 'gcp'", specifier = ">=2.0" },
-    { name = "hex-service-kit", extras = ["fastapi"], git = "https://github.com/portable-genai/hex-service-kit?rev=v0.0.10" },
-    { name = "hex-service-kit", extras = ["otel"], marker = "extra == 'gcp'", git = "https://github.com/portable-genai/hex-service-kit?rev=v0.0.10" },
+    { name = "hex-service-kit", extras = ["fastapi"], git = "https://github.com/portable-genai/hex-service-kit?rev=v0.0.11" },
+    { name = "hex-service-kit", extras = ["otel"], marker = "extra == 'gcp'", git = "https://github.com/portable-genai/hex-service-kit?rev=v0.0.11" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.3.1" },
     { name = "pii-kit", git = "https://github.com/portable-genai/pii-kit?rev=v0.0.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.2" },
@@ -641,22 +641,6 @@ wheels = [
 ]
 
 [[package]]
-name = "google-cloud-trace"
-version = "1.20.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "google-api-core", extra = ["grpc"] },
-    { name = "google-auth" },
-    { name = "grpcio" },
-    { name = "proto-plus" },
-    { name = "protobuf" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/fd/63/18e4cfbd48ec1de3b39a3fba5500c12c7b38f14356b1b534db8b95063338/google_cloud_trace-1.20.0.tar.gz", hash = "sha256:f5a6f9b8da530b76c452163b83e5081c1696f1b4f67290c878b0e7370f1e910a", size = 103594, upload-time = "2026-06-22T23:22:39.56Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/fb/e071b9a2a0370c50bed53292c567093b77f5db15dea4642dbc8f18d7793f/google_cloud_trace-1.20.0-py3-none-any.whl", hash = "sha256:88527c02948f410ed62ceaac5c960597a4143e3c11ce62273143f11aa388f564", size = 108134, upload-time = "2026-06-22T23:20:40.235Z" },
-]
-
-[[package]]
 name = "googleapis-common-protos"
 version = "1.75.4"
 source = { registry = "https://pypi.org/simple" }
@@ -763,8 +747,8 @@ wheels = [
 
 [[package]]
 name = "hex-service-kit"
-version = "0.0.10"
-source = { git = "https://github.com/portable-genai/hex-service-kit?rev=v0.0.10#0e71fc776e3a1813f51545352984741f0e3850ee" }
+version = "0.0.11"
+source = { git = "https://github.com/portable-genai/hex-service-kit?rev=v0.0.11#ec2d724512c4d21c70600a895715e4340908282d" }
 
 [package.optional-dependencies]
 fastapi = [
@@ -773,7 +757,6 @@ fastapi = [
 ]
 otel = [
     { name = "google-auth" },
-    { name = "opentelemetry-exporter-gcp-trace" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-sdk" },
     { name = "requests" },
@@ -1002,22 +985,6 @@ wheels = [
 ]
 
 [[package]]
-name = "opentelemetry-exporter-gcp-trace"
-version = "1.15.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "google-cloud-trace" },
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-resourcedetector-gcp" },
-    { name = "opentelemetry-sdk" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/4e/0c/58bb79084ce208e4f46666b6343ad94533d7a8976a60d2af980a62c43e68/opentelemetry_exporter_gcp_trace-1.15.0.tar.gz", hash = "sha256:70db6b807756c0815dce6af2f230663a07983f73bde0b7302e21f3a241b512cd", size = 19597, upload-time = "2026-08-19T21:44:12.954Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/f1/7e04fa6e95c233c83ef92ca298dc56150dfa363e325e6d7d5a074151fdcb/opentelemetry_exporter_gcp_trace-1.15.0-py3-none-any.whl", hash = "sha256:bab0bda41a74c9ece16611da2e1dd442d9d6f45238a734e62fee796e2c3b122c", size = 14373, upload-time = "2026-08-19T21:44:09.012Z" },
-]
-
-[[package]]
 name = "opentelemetry-exporter-http-transport"
 version = "0.66b0"
 source = { registry = "https://pypi.org/simple" }
@@ -1087,20 +1054,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/72/28/67c38cfb7e2bdfdd0cde7dcdd0424aed0291fbd64aa4ea3e7e913734711a/opentelemetry_proto-1.45.0.tar.gz", hash = "sha256:96ee414f24bc3f61ea8e17dc56b4348d4049d73db3eb17c6b3edf75b5b403300", size = 46489, upload-time = "2026-09-25T12:32:41.409Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6b/45/814d55714507c7ce9c9cd86a4f83ceb5a74ab0bffcc63ff493943f138de2/opentelemetry_proto-1.45.0-py3-none-any.whl", hash = "sha256:9731566359d7b8e1ee1e149d8e4ad6865bab965e657ad3387ec2784d16927666", size = 72486, upload-time = "2026-09-25T12:32:23.36Z" },
-]
-
-[[package]]
-name = "opentelemetry-resourcedetector-gcp"
-version = "1.14.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-sdk" },
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/06/54/0a95db467d25d81abc16961f5c4538b65f5707e62628a7bb9cdac2849486/opentelemetry_resourcedetector_gcp-1.14.0.tar.gz", hash = "sha256:10b41802acf815838a85c9fe1dae02f5d27ebc17527b77441111c010bead95bc", size = 14831, upload-time = "2026-07-24T19:08:37.901Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/26/75/81a3035969eb44ff4c6a18abc26c5cbff73ba5e4bde6be94298004c3fbb2/opentelemetry_resourcedetector_gcp-1.14.0-py3-none-any.whl", hash = "sha256:cc4818570933b5c651aef80fbf6e8fbe26d63fe6fbc24ce22ae37e78744d30eb", size = 15561, upload-time = "2026-07-24T19:08:36.843Z" },
 ]
 
 [[package]]
