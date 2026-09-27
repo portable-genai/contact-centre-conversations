@@ -159,6 +159,7 @@ run "both_modes_are_born_off_on_a_served_deployment" {
     service_domain              = "contact-centre.fictional-bank.example"
     human_review_url            = "https://review.fictional-bank.example"
     guardrail_url               = "https://guardrail.fictional-bank.example"
+    guardrail_audience          = "https://guardrail.fictional-bank.example"
     retrieval_url               = "https://knowledge.fictional-bank.example"
     alert_notification_channels = ["projects/fictional-contact-sg/notificationChannels/123"]
   }
@@ -201,6 +202,7 @@ run "serving_edge_contract" {
     service_domain                = "contact-centre.fictional-bank.example"
     human_review_url              = "https://review.fictional-bank.example"
     guardrail_url                 = "https://guardrail.fictional-bank.example"
+    guardrail_audience            = "https://guardrail.fictional-bank.example"
     retrieval_url                 = "https://knowledge.fictional-bank.example"
     tool_catalog_url              = "https://actions.fictional-bank.example"
     alert_notification_channels   = ["projects/fictional-contact-sg/notificationChannels/123"]
@@ -250,6 +252,11 @@ run "serving_edge_contract" {
   assert {
     condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "GUARDRAIL_GATEWAY_URL"]) == var.guardrail_url
     error_message = "Rule R1: the service must be told which gateway screens every inbound turn, or it cannot handle one."
+  }
+
+  assert {
+    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "GUARDRAIL_GATEWAY_AUDIENCE"]) == var.guardrail_audience
+    error_message = "Rule R1: the service must be told the audience the gateway verifies, or it has no ID token to present and every screen is refused."
   }
 
   assert {
@@ -368,6 +375,7 @@ run "reject_mutable_api_image" {
     service_domain              = "contact-centre.fictional-bank.example"
     human_review_url            = "https://review.fictional-bank.example"
     guardrail_url               = "https://guardrail.fictional-bank.example"
+    guardrail_audience          = "https://guardrail.fictional-bank.example"
     retrieval_url               = "https://knowledge.fictional-bank.example"
     alert_notification_channels = ["projects/fictional-contact-sg/notificationChannels/123"]
   }
@@ -386,6 +394,7 @@ run "reject_edge_with_no_review_console" {
     service_domain              = "contact-centre.fictional-bank.example"
     human_review_url            = ""
     guardrail_url               = "https://guardrail.fictional-bank.example"
+    guardrail_audience          = "https://guardrail.fictional-bank.example"
     retrieval_url               = "https://knowledge.fictional-bank.example"
     alert_notification_channels = ["projects/fictional-contact-sg/notificationChannels/123"]
   }
@@ -404,11 +413,31 @@ run "reject_edge_with_no_guardrail_gateway" {
     service_domain              = "contact-centre.fictional-bank.example"
     human_review_url            = "https://review.fictional-bank.example"
     guardrail_url               = ""
+    guardrail_audience          = "https://guardrail.fictional-bank.example"
     retrieval_url               = "https://knowledge.fictional-bank.example"
     alert_notification_channels = ["projects/fictional-contact-sg/notificationChannels/123"]
   }
 
   expect_failures = [var.guardrail_url]
+}
+
+run "reject_edge_with_a_guardrail_gateway_but_no_audience" {
+  command = plan
+
+  variables {
+    project_id                  = "fictional-contact-sg"
+    enable_vpc_sc               = false
+    production_edge_enabled     = true
+    api_image                   = "asia-southeast1-docker.pkg.dev/fictional-contact-sg/contact/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    service_domain              = "contact-centre.fictional-bank.example"
+    human_review_url            = "https://review.fictional-bank.example"
+    guardrail_url               = "https://guardrail.fictional-bank.example"
+    guardrail_audience          = ""
+    retrieval_url               = "https://knowledge.fictional-bank.example"
+    alert_notification_channels = ["projects/fictional-contact-sg/notificationChannels/123"]
+  }
+
+  expect_failures = [var.guardrail_audience]
 }
 
 run "edge_with_routing_and_guardrail_stated_off_needs_neither_url" {
@@ -439,7 +468,7 @@ run "edge_with_routing_and_guardrail_stated_off_needs_neither_url" {
   }
 
   assert {
-    condition     = length([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.name if contains(["HUMAN_REVIEW_URL", "GUARDRAIL_GATEWAY_URL"], item.name)]) == 0
+    condition     = length([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.name if contains(["HUMAN_REVIEW_URL", "GUARDRAIL_GATEWAY_URL", "GUARDRAIL_GATEWAY_AUDIENCE"], item.name)]) == 0
     error_message = "an empty console or gateway URL must be left off the service: the service refuses an EMPTIED variable at boot"
   }
 }
@@ -455,6 +484,7 @@ run "reject_edge_with_no_knowledge_base" {
     service_domain              = "contact-centre.fictional-bank.example"
     human_review_url            = "https://review.fictional-bank.example"
     guardrail_url               = "https://guardrail.fictional-bank.example"
+    guardrail_audience          = "https://guardrail.fictional-bank.example"
     retrieval_url               = ""
     alert_notification_channels = ["projects/fictional-contact-sg/notificationChannels/123"]
   }
@@ -473,6 +503,7 @@ run "reject_a_mode_served_on_no_promotion_evidence" {
     service_domain                = "contact-centre.fictional-bank.example"
     human_review_url              = "https://review.fictional-bank.example"
     guardrail_url                 = "https://guardrail.fictional-bank.example"
+    guardrail_audience            = "https://guardrail.fictional-bank.example"
     retrieval_url                 = "https://knowledge.fictional-bank.example"
     tool_catalog_url              = "https://actions.fictional-bank.example"
     alert_notification_channels   = ["projects/fictional-contact-sg/notificationChannels/123"]
@@ -494,6 +525,7 @@ run "reject_self_service_with_no_action_catalog" {
     service_domain                = "contact-centre.fictional-bank.example"
     human_review_url              = "https://review.fictional-bank.example"
     guardrail_url                 = "https://guardrail.fictional-bank.example"
+    guardrail_audience            = "https://guardrail.fictional-bank.example"
     retrieval_url                 = "https://knowledge.fictional-bank.example"
     tool_catalog_url              = ""
     alert_notification_channels   = ["projects/fictional-contact-sg/notificationChannels/123"]
@@ -515,6 +547,7 @@ run "reject_edge_with_no_alert_channel" {
     service_domain              = "contact-centre.fictional-bank.example"
     human_review_url            = "https://review.fictional-bank.example"
     guardrail_url               = "https://guardrail.fictional-bank.example"
+    guardrail_audience          = "https://guardrail.fictional-bank.example"
     retrieval_url               = "https://knowledge.fictional-bank.example"
     alert_notification_channels = []
   }

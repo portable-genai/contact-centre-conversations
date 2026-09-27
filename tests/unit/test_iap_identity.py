@@ -74,13 +74,14 @@ GOOD_CLAIMS: dict[str, Any] = {
 @pytest.fixture(autouse=True)
 def _managed_deployment_names_its_services(monkeypatch: pytest.MonkeyPatch) -> None:
     """A managed process with review routing and the guardrail on refuses to boot without the
-    console and the gateway they call.
+    console and the gateway they call, and the gateway's audience its ID token is minted for.
 
     These tests build the app under the managed profile to exercise identity and exposure, not
     routing or screening, so they name both services the way any managed deployment must.
     """
     monkeypatch.setenv("HUMAN_REVIEW_URL", "https://review.example.test")
     monkeypatch.setenv("GUARDRAIL_GATEWAY_URL", "https://guardrail.example.test")
+    monkeypatch.setenv("GUARDRAIL_GATEWAY_AUDIENCE", "https://guardrail.example.test")
 
 
 _PROFILE_ENV = "CONTACT_PROFILE"
@@ -422,6 +423,7 @@ _REBOUND_SETTINGS = "\n".join(
         # gateway, or it refuses to boot; the module fixture above supplies both.
         "review_url: " + "${HUMAN_REVIEW_URL:-}",
         "guardrail_url: " + "${GUARDRAIL_GATEWAY_URL:-}",
+        "guardrail_audience: " + "${GUARDRAIL_GATEWAY_AUDIENCE:-}",
         # The mode block, mirroring the shipped settings file. Without it both modes are OFF and
         # every end-user route answers 503, which would make the positive control below pass for
         # the wrong reason: a refusal from the MODE gate is not a refusal from the identity one.

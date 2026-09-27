@@ -79,6 +79,10 @@ streams_path: ${CONTACT_STREAMS_PATH:-config/streams}
 # unconfigured remote dependency REFUSES at the adapter rather than defaulting to localhost.
 retrieval_url: ${KNOWLEDGE_BASE_URL:-}
 guardrail_url: ${GUARDRAIL_GATEWAY_URL:-}
+# The OIDC audience the gateway verifies (its GUARDRAIL_S2S_AUDIENCE). Under gcp the screening
+# adapter mints a Google-signed ID token for it from the workload identity; a non-loopback
+# gateway with none refuses at boot.
+guardrail_audience: ${GUARDRAIL_GATEWAY_AUDIENCE:-}
 tool_catalog_url: ${CONTACT_TOOL_CATALOG_URL:-}
 party_records_url: ${CONTACT_PARTY_RECORDS_URL:-}
 

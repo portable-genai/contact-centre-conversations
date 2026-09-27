@@ -44,11 +44,12 @@ _PROFILE_ENV = "CONTACT_PROFILE"
 _SWITCHES = (GUARDRAIL_ENV, REVIEW_ROUTING_ENV)
 _CONSOLE = "https://review.example.test"
 _GATEWAY = "https://guardrail.example.test"
+_AUDIENCE_ENV = "GUARDRAIL_GATEWAY_AUDIENCE"
 
 
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in (*_SWITCHES, "HUMAN_REVIEW_URL", "GUARDRAIL_GATEWAY_URL"):
+    for name in (*_SWITCHES, "HUMAN_REVIEW_URL", "GUARDRAIL_GATEWAY_URL", _AUDIENCE_ENV):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv(_PROFILE_ENV, "local")
 
@@ -125,6 +126,7 @@ def managed(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
 
 def test_routing_on_without_a_console_refuses_at_boot(managed: pytest.MonkeyPatch) -> None:
     managed.setenv("GUARDRAIL_GATEWAY_URL", _GATEWAY)
+    managed.setenv(_AUDIENCE_ENV, _GATEWAY)
     with pytest.raises(ConfiguredEmptyError, match="HUMAN_REVIEW_URL"):
         Settings.load()
 
@@ -135,10 +137,32 @@ def test_the_guardrail_on_without_a_gateway_refuses_at_boot(managed: pytest.Monk
         Settings.load()
 
 
+def test_a_remote_gateway_with_no_audience_refuses_at_boot(managed: pytest.MonkeyPatch) -> None:
+    """Under gcp the gateway accepts only a Google-signed ID token minted for its audience.
+
+    With none named the screen would 401 on every turn: fail closed, but discovered at the first
+    contact rather than at boot. A non-loopback gateway therefore needs its audience up front.
+    """
+    managed.setenv("HUMAN_REVIEW_URL", _CONSOLE)
+    managed.setenv("GUARDRAIL_GATEWAY_URL", _GATEWAY)
+    with pytest.raises(ConfiguredEmptyError, match=_AUDIENCE_ENV):
+        Settings.load()
+
+
+def test_a_loopback_gateway_needs_no_audience(managed: pytest.MonkeyPatch) -> None:
+    """Loopback is the offline zero-secret posture: nothing is minted, so nothing is required."""
+    managed.setenv("HUMAN_REVIEW_URL", _CONSOLE)
+    managed.setenv("GUARDRAIL_GATEWAY_URL", "http://127.0.0.1:8081")
+    assert Settings.load().guardrail_audience == ""
+
+
 def test_both_on_with_both_services_named_loads(managed: pytest.MonkeyPatch) -> None:
     managed.setenv("HUMAN_REVIEW_URL", _CONSOLE)
     managed.setenv("GUARDRAIL_GATEWAY_URL", _GATEWAY)
-    assert Settings.load().controls == ControlSwitches(guardrail=True, review_routing=True)
+    managed.setenv(_AUDIENCE_ENV, _GATEWAY)
+    settings = Settings.load()
+    assert settings.controls == ControlSwitches(guardrail=True, review_routing=True)
+    assert settings.guardrail_audience == _GATEWAY
 
 
 def test_both_stated_off_need_neither_service(managed: pytest.MonkeyPatch) -> None:

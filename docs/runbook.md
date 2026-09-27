@@ -50,7 +50,9 @@ Order of operations that is not obvious:
 Three sibling services are required once the edge is enabled, and the plan refuses without
 them: `human_review_url` (rule R8, the console an escalation is routed to), `guardrail_url`
 (rule R1, the gateway every inbound turn is screened through) and `retrieval_url` (rule R3, the
-governed index a suggestion is grounded in). The first two are required only while their
+governed index a suggestion is grounded in), with `guardrail_audience` alongside the gateway
+(the audience its ID token is minted for, equal to the gateway's `GUARDRAIL_S2S_AUDIENCE`). The
+first two are required only while their
 runtime control is on: `review_routing_enabled = false` or `guardrail_enabled = false` states the
 control off on the service and lifts the requirement (see "Runtime controls" below). `tool_catalog_url` is required in addition when
 self-service is served, because that is the mode that takes actions. Each of those is a
@@ -220,7 +222,8 @@ switch.
   with routing on, an unset `HUMAN_REVIEW_URL` refuses to boot.
 - **Guardrail off** binds a screen that passes every turn with the detail `guardrail off`, so
   retrieval and generation see turns nobody screened. Under `gcp` with the guardrail on, an
-  unset `GUARDRAIL_GATEWAY_URL` refuses to boot rather than failing closed on the first turn.
+  unset `GUARDRAIL_GATEWAY_URL`, or a non-loopback one with no `GUARDRAIL_GATEWAY_AUDIENCE`,
+  refuses to boot rather than failing closed on the first turn.
 - **A failed hand-off** is logged at `WARNING` with the exception type and reported as
   `review_routing: "failed"` with an empty `review_ref`; the turn itself is still answered.
   The API responses, the agent tools' payloads and the CLI's per-turn line all carry it, and
@@ -231,12 +234,31 @@ switch.
 
 ## Outbound credentials for the sibling services (rules R1 and R3)
 The `agent-guardrail-gateway` screen, the `enterprise-knowledge-base` governed index and the MCP action catalog are reached over
-one shared S2S transport (`adapters/gcp/_s2s.py`) and share ONE credential pair:
-`S2S_TOKEN` is the bearer, `S2S_SIGNING_KEY` optionally signs the propagated actor.
+one shared S2S transport (`adapters/gcp/_s2s.py`). The index and the catalog share ONE credential
+pair: `S2S_TOKEN` is the bearer, `S2S_SIGNING_KEY` optionally signs the propagated actor.
 Both are OUTBOUND, like the `HUMAN_REVIEW_S2S_*` pair above and unlike this service's own inbound
 `CONTACT_S2S_TOKEN`, and both belong in `.env.secrets` (see `.env.secrets.example`). The URLs
-they authenticate against are `GUARDRAIL_GATEWAY_URL`, `KNOWLEDGE_BASE_URL` and
-`CONTACT_TOOL_CATALOG_URL` in `.env`, which are not secret and are documented there.
+they authenticate against are `KNOWLEDGE_BASE_URL` and `CONTACT_TOOL_CATALOG_URL` in `.env`,
+which are not secret and are documented there.
+
+The guardrail gateway authenticates differently, because its `gcp` profile accepts only a
+Google-signed OIDC ID token whose audience is its `GUARDRAIL_S2S_AUDIENCE` and whose service
+account is on its `GUARDRAIL_S2S_ALLOWED_CALLERS`. The screening adapter mints that token per
+call from this service's workload identity for `GUARDRAIL_GATEWAY_AUDIENCE` (Terraform
+`guardrail_audience`), which must equal the gateway's audience exactly, and this service's
+runtime service account must be on the gateway's allowlist. It does not read `S2S_TOKEN`: the
+commons sends a static bearer in preference to minting, so a shared name would put the index's
+credential on the screen and every turn would 401. Its static-bearer override is its own
+`GUARDRAIL_GATEWAY_S2S_TOKEN`, unset in a `gcp` deployment.
+
+| Guardrail credential state | What happens |
+|---|---|
+| Non-loopback gateway, `GUARDRAIL_GATEWAY_AUDIENCE` unset | The process refuses to boot under `gcp` with the guardrail on, naming the variable. |
+| Audience set, ID token cannot be minted (no metadata server, no SDK, no permission) | `RuntimeError` before the request leaves; the screen is UNAVAILABLE and fails closed per mode. |
+| Audience set, gateway answers `401`/`403` | The audience does not match the gateway's `GUARDRAIL_S2S_AUDIENCE`, or this service account is not on its `GUARDRAIL_S2S_ALLOWED_CALLERS`. Fix the gateway's configuration or this one; the screen fails closed meanwhile. |
+| Loopback gateway | Nothing is minted and no `Authorization` header is attached: the offline zero-secret posture. |
+
+The rest of this section is the `S2S_TOKEN` / `S2S_SIGNING_KEY` pair.
 
 They fail the way the R8 pair does, which is the point: both outbound pairs refuse rather than
 calling a sibling unauthenticated. `hex_service_kit.s2s.client_headers` resolves both names in
@@ -248,7 +270,7 @@ refusal happens before the socket is opened:
 
 | Missing value | What happens |
 |---|---|
-| `S2S_TOKEN` unset, sibling NOT on loopback | `ValueError` naming the variable, raised before the request leaves. Each caller turns it into a fail-closed verdict (an unavailable screen, an unreachable index). Symptom: turns refused as unavailable, with the variable named in the log and no 401 at the far end because nothing was sent. Fix: set the secret. |
+| `S2S_TOKEN` unset, sibling NOT on loopback | `ValueError` naming the variable, raised before the request leaves. Each caller turns it into a fail-closed verdict (an unreachable index, a refused action). Symptom: turns refused as unavailable, with the variable named in the log and no 401 at the far end because nothing was sent. Fix: set the secret. |
 | `S2S_TOKEN` unset, sibling on loopback | Accepted, and no `Authorization` header is attached. This is the offline zero-secret posture, the same carve-out that lets a loopback base URL be plain `http`. |
 | `S2S_TOKEN` emptied (`""` or whitespace) | `ConfiguredEmptyError` naming the variable, wherever the sibling is, loopback included. An emptied variable is an expressed intent that names no credential and never inherits the unset behaviour. Common cause: a config map or deployment template that renders an empty string. |
 | `S2S_SIGNING_KEY` unset | Accepted. The signed-actor pair is omitted rather than sent unsigned, so the sibling sees a service call carrying no end-user actor. Calls still succeed; per-actor attribution at the far end is what is lost. |

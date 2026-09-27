@@ -46,10 +46,16 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import yaml
 from hex_service_kit.identity import IdentityPort
-from hex_service_kit.netdefaults import ConfiguredEmptyError, EnvSetting, read_env_setting
+from hex_service_kit.netdefaults import (
+    ConfiguredEmptyError,
+    EnvSetting,
+    is_loopback_host,
+    read_env_setting,
+)
 
 from .domain.modes import ModeGates
 from .domain.packs import PackLibrary
@@ -654,6 +660,10 @@ class Settings:
     #: Base URL of the agent-guardrail-gateway Agent Guardrail Gateway (the platform-remote
     #: screening adapter).
     guardrail_url: str = ""
+    #: The OIDC audience the gateway verifies (its ``GUARDRAIL_S2S_AUDIENCE``). Under ``gcp`` the
+    #: screening adapter mints a Google-signed ID token for exactly this value from the service's
+    #: workload identity; required for a non-loopback gateway, checked at boot.
+    guardrail_audience: str = ""
     #: Base URL of the client's MCP / A2A action service.
     tool_catalog_url: str = ""
     party_records_url: str = ""
@@ -705,6 +715,7 @@ class Settings:
             packs_path=packs_path,
             retrieval_url=str(data.get("retrieval_url") or ""),
             guardrail_url=str(data.get("guardrail_url") or ""),
+            guardrail_audience=str(data.get("guardrail_audience") or ""),
             tool_catalog_url=str(data.get("tool_catalog_url") or ""),
             party_records_url=str(data.get("party_records_url") or ""),
             model=str(data.get("model") or "gemini-3.5-flash"),
@@ -791,7 +802,9 @@ def _refuse_unconfigured_controls(settings: Settings) -> None:
     The managed router used to discover a missing ``review_url`` on the first escalation and
     fail that request, and the gateway guardrail discovered a missing ``guardrail_url`` on the
     first turn. Both are configuration errors, so both refuse here and say how to either
-    configure the control or switch it off out loud.
+    configure the control or switch it off out loud. So is a non-loopback gateway with no
+    audience to mint its ID token for: the gateway would 401 every turn, which fails closed but
+    only tells anyone at the first contact.
     """
     if settings.profile not in _MANAGED_PROFILES:
         return
@@ -807,6 +820,18 @@ def _refuse_unconfigured_controls(settings: Settings) -> None:
             f"The guardrail is on under profile {settings.profile!r} but GUARDRAIL_GATEWAY_URL "
             f"(config/settings.yaml guardrail_url) is not set. Name the agent-guardrail-gateway "
             f"base URL, or set {GUARDRAIL_ENV}=off to run without screening."
+        )
+    if (
+        controls.guardrail
+        and not is_loopback_host(urlparse(settings.guardrail_url.strip()).hostname)
+        and not settings.guardrail_audience.strip()
+    ):
+        raise ConfiguredEmptyError(
+            f"The guardrail is on under profile {settings.profile!r} with a non-loopback gateway "
+            f"but GUARDRAIL_GATEWAY_AUDIENCE (config/settings.yaml guardrail_audience) is not "
+            f"set. The gateway verifies a Google-signed OIDC ID token against its "
+            f"GUARDRAIL_S2S_AUDIENCE, and this service mints one for exactly that value: name "
+            f"it, or set {GUARDRAIL_ENV}=off to run without screening."
         )
 
 

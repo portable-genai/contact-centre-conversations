@@ -91,6 +91,10 @@ production_edge_enabled = false
 # required only while their runtime control is on (below).
 # human_review_url = "https://review.fictional-bank.example"
 # guardrail_url    = "https://guardrail.fictional-bank.example"
+# The gateway accepts only a Google-signed ID token for its own audience (its
+# GUARDRAIL_S2S_AUDIENCE), minted from this service's runtime service account, which
+# must also be on the gateway's GUARDRAIL_S2S_ALLOWED_CALLERS.
+# guardrail_audience = "https://guardrail.fictional-bank.example"
 # retrieval_url    = "https://knowledge.fictional-bank.example"
 
 # Cheap runtime controls stay on in the reference; say so rather than inheriting the default.
@@ -124,8 +128,9 @@ guardrail_enabled      = true
 
 # Credentials arrive as pinned Secret Manager versions, never as values here. The
 # inbound token is what a calling service presents to this one; the platform pair
-# authenticates the outbound calls to agent-guardrail-gateway, enterprise-knowledge-base and the action catalog, and the
-# HUMAN_REVIEW_S2S_* pair the outbound calls to the review console.
+# authenticates the outbound calls to enterprise-knowledge-base and the action catalog, and the
+# HUMAN_REVIEW_S2S_* pair the outbound calls to the review console. The guardrail gateway
+# needs no secret: its ID token is minted per call for guardrail_audience (above).
 # additional_secret_env = {
 #   CONTACT_S2S_TOKEN    = { secret_id = "contact-inbound-s2s", version = "3" }
 #   S2S_TOKEN        = { secret_id = "hrz-outbound-s2s", version = "2" }
