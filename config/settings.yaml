@@ -149,10 +149,11 @@ adapters:
     gcp: contact_centre_conversations.adapters.gcp.review_router:CloudReviewRouter
     onprem: contact_centre_conversations.adapters.onprem.review_router:OnPremReviewRouter
 
-  # Tracing. Which BACKEND a deployed profile exports to is not a binding: the gcp
-  # adapter reads OTEL_EXPORTER_OTLP_ENDPOINT and sends OTLP to the agent-observability collector when
-  # it is set, straight to Cloud Trace when it is not. Tracing is not essential to
-  # correctness, so onprem is ABSENT rather than fatal, unlike the other placeholders.
+  # Tracing. Which BACKEND a deployed profile exports to is not a binding: the gcp adapter sends
+  # OTLP to the agent-observability collector named by OTEL_EXPORTER_OTLP_ENDPOINT, and the commons
+  # refuses to build a tracer when that is unset or empty: exporting straight to Cloud Trace would
+  # skip the collector's GenAI-content redaction. Tracing is not essential to correctness, so onprem
+  # is ABSENT rather than fatal, unlike the other placeholders.
   tracer:
     local: contact_centre_conversations.adapters.local.tracer:LocalNoopTracerAdapter
     gcp: contact_centre_conversations.adapters.gcp.tracer:CloudTracerAdapter
